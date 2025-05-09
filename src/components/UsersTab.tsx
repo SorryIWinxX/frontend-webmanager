@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from "@/components/ui/badge"; // Added missing import
 import { useToast } from '@/hooks/use-toast';
 import { getUsers, addUser, deleteUser } from '@/app/actions';
 import type { User, UserRole } from '@/types';
@@ -250,7 +251,7 @@ export function UsersTab() {
                           size="icon" 
                           aria-label="Delete user"
                           onClick={() => handleDeleteUser(user.id, user.username)}
-                          disabled={isDeleting}
+                          disabled={isDeleting || user.username === 'admin'} // Prevent admin deletion for safety
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -266,3 +267,4 @@ export function UsersTab() {
     </div>
   );
 }
+
