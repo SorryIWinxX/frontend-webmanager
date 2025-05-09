@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useTransition } from 'react';
@@ -6,12 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { getUsers, addUser, deleteUser } from '@/app/actions';
 import type { User, UserRole } from '@/types';
-import { Loader2, UserPlus, Users as UsersIcon, Trash2, Edit, AlertTriangle } from 'lucide-react';
+import { Loader2, UserPlus, Users as UsersIcon, Trash2, Edit, AlertTriangle, Copy } from 'lucide-react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -19,7 +19,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 
 const UserFormSchema = z.object({
   username: z.string().min(3, { message: "Username must be at least 3 characters." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
   role: z.enum(["admin", "operator"], { required_error: "Role is required." }),
 });
 
@@ -37,7 +36,6 @@ export function UsersTab() {
     resolver: zodResolver(UserFormSchema),
     defaultValues: {
       username: "",
-      password: "",
       role: "operator",
     },
   });
@@ -61,10 +59,18 @@ export function UsersTab() {
     fetchUsers();
   }, []);
 
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast({ title: "Copied!", description: "Password copied to clipboard." });
+    }).catch(err => {
+      toast({ title: "Copy Failed", description: "Could not copy password.", variant: "destructive" });
+    });
+  };
+
+
   const onSubmit = async (data: UserFormData) => {
     const formData = new FormData();
     formData.append('username', data.username);
-    formData.append('password', data.password);
     formData.append('role', data.role);
 
     startSubmitting(async () => {
@@ -72,7 +78,22 @@ export function UsersTab() {
       if (result.success) {
         toast({
           title: "User Added",
-          description: result.message,
+          description: (
+            <div>
+              {result.message}
+              {result.generatedPassword && (
+                <div className="mt-2">
+                  Generated Password: 
+                  <span className="font-mono bg-muted p-1 rounded mx-1">{result.generatedPassword}</span>
+                  <Button variant="ghost" size="icon" className="ml-1 h-6 w-6" onClick={() => copyToClipboard(result.generatedPassword!)}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <p className="text-xs text-muted-foreground">User will be forced to change this on first login.</p>
+                </div>
+              )}
+            </div>
+          ),
+          duration: 10000, // Show toast longer for password
         });
         fetchUsers();
         form.reset();
@@ -94,7 +115,9 @@ export function UsersTab() {
   };
   
   const handleDeleteUser = (userId: string, username: string) => {
-    if (!confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`)) {
+    // Basic confirmation, consider using AlertDialog for better UX
+    const isConfirmed = window.confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`);
+    if (!isConfirmed) {
       return;
     }
     startDeleting(async () => {
@@ -111,14 +134,14 @@ export function UsersTab() {
   };
 
   return (
-    <div className="container mx-auto p-4 md:p-6 lg:p-8">
-      <Card className="shadow-xl">
+    <div className="container mx-auto p-0 md:p-2 lg:p-4">
+      <Card className="shadow-xl border-none sm:border sm:rounded-lg">
         <CardHeader>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <CardTitle className="text-3xl font-bold text-primary flex items-center"><UsersIcon className="mr-2 h-8 w-8" />User Management</CardTitle>
               <CardDescription className="text-lg">
-                Create and manage user accounts for the application.
+                Create and manage user accounts. New users will receive a generated password and must change it upon first login.
               </CardDescription>
             </div>
             <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
@@ -131,7 +154,7 @@ export function UsersTab() {
                 <DialogHeader>
                   <DialogTitle>Add New User</DialogTitle>
                   <DialogDescription>
-                    Enter the details for the new user account.
+                    Enter the username and role. A password will be generated.
                   </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -144,19 +167,6 @@ export function UsersTab() {
                           <FormLabel className="text-right">Username</FormLabel>
                           <FormControl className="col-span-3">
                             <Input {...field} placeholder="john.doe" />
-                          </FormControl>
-                          <FormMessage className="col-span-3 col-start-2" />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem className="grid grid-cols-4 items-center gap-4">
-                          <FormLabel className="text-right">Password</FormLabel>
-                          <FormControl className="col-span-3">
-                            <Input type="password" {...field} placeholder="••••••••" />
                           </FormControl>
                           <FormMessage className="col-span-3 col-start-2" />
                         </FormItem>
@@ -217,6 +227,7 @@ export function UsersTab() {
                   <TableRow>
                     <TableHead>Username</TableHead>
                     <TableHead>Role</TableHead>
+                    <TableHead>Must Change Password</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -225,6 +236,11 @@ export function UsersTab() {
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">{user.username}</TableCell>
                       <TableCell className="capitalize">{user.role}</TableCell>
+                      <TableCell>
+                        <Badge variant={user.forcePasswordChange ? "destructive" : "secondary"} className="shadow-sm">
+                          {user.forcePasswordChange ? "Yes" : "No"}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="text-right space-x-2">
                         <Button variant="ghost" size="icon" aria-label="Edit user" disabled> {/* Edit is illustrative */}
                           <Edit className="h-4 w-4" />

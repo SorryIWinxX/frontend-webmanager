@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useTransition } from 'react';
@@ -50,8 +51,8 @@ export function SyncTab() {
   };
 
   return (
-    <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col items-center">
-      <Card className="w-full max-w-2xl shadow-xl">
+    <div className="container mx-auto p-0 md:p-2 lg:p-4 flex flex-col items-center">
+      <Card className="w-full max-w-2xl shadow-xl border-none sm:border sm:rounded-lg">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl font-bold text-primary">Data Synchronization</CardTitle>
           <CardDescription className="text-lg">
