@@ -3,13 +3,14 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LogIn, Building2 } from 'lucide-react';
+import { Loader2, LogIn } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -50,7 +51,13 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center">
           <div className="flex justify-center items-center mb-4">
-            <Building2 size={48} className="text-primary" />
+            <Image 
+              src="https://placehold.co/64x64.png" 
+              alt="Company Logo" 
+              width={64} 
+              height={64} 
+              data-ai-hint="company logo" 
+            />
           </div>
           <CardTitle className="text-3xl font-bold text-primary">Desktop Maintenance Hub</CardTitle>
           <CardDescription className="text-lg">Please sign in to continue</CardDescription>
