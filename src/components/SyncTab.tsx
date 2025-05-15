@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { syncFromSAP } from '@/app/actions';
-import { Loader2, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Loader2, RefreshCw, CheckCircle, AlertTriangle, Database } from 'lucide-react';
 
 export function SyncTab() {
   const [isSyncing, startTransition] = useTransition();
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [synchronizedItems, setSynchronizedItems] = useState<string[]>([]);
+  const [firebaseLogId, setFirebaseLogId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -19,12 +20,16 @@ export function SyncTab() {
     setError(null);
     setSyncStatus(null);
     setSynchronizedItems([]);
+    setFirebaseLogId(null);
     startTransition(async () => {
       try {
         const result = await syncFromSAP();
         if (result.success) {
           setSyncStatus(result.message);
           setSynchronizedItems(result.synchronizedData || []);
+          if (result.firebaseLogId) {
+            setFirebaseLogId(result.firebaseLogId);
+          }
           toast({
             title: "Synchronization Successful",
             description: result.message,
@@ -32,8 +37,9 @@ export function SyncTab() {
           });
         } else {
           setError(result.message);
+          setSynchronizedItems(result.synchronizedData || []); // Show items even on partial failure
           toast({
-            title: "Synchronization Failed",
+            title: "Synchronization Partially Failed or Failed",
             description: result.message,
             variant: "destructive",
           });
@@ -52,17 +58,16 @@ export function SyncTab() {
 
   return (
     <div className="container mx-auto p-0 md:p-2 lg:p-4 flex flex-col items-center">
-      <Card className="w-full max-w-2xl shadow-xl border-none sm:border sm:rounded-lg">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold text-primary">Data Synchronization</CardTitle>
+          <CardTitle className="text-3xl font-bold text-primary">Sincronizacion de datos</CardTitle>
           <CardDescription className="text-lg">
-            Fetch the latest data from SAP and update local tables.
+            Consulta a SAP y sincroniza los datos con la base de datos local (Firebase).
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center space-y-6">
           <Button
             size="lg"
-            className="w-full max-w-xs text-lg py-8 bg-accent hover:bg-accent/90 text-accent-foreground rounded-lg shadow-md transition-transform hover:scale-105"
+            className="w-full max-w-xs text-lg py-8 bg-accent hover:bg-accent/90 text-accent-foreground transition-transform hover:scale-105"
             onClick={handleSync}
             disabled={isSyncing}
             aria-live="polite"
@@ -70,19 +75,19 @@ export function SyncTab() {
             {isSyncing ? (
               <>
                 <Loader2 className="mr-2 h-6 w-6 animate-spin" />
-                Synchronizing...
+                Sincronizando...
               </>
             ) : (
               <>
                 <RefreshCw className="mr-2 h-6 w-6" />
-                Synchronize from SAP
+                Sincronizar con SAP
               </>
             )}
           </Button>
           
           {isSyncing && (
             <div className="text-center text-muted-foreground">
-              <p>Please wait, fetching data can take a few moments.</p>
+              <p>Please wait, fetching data and writing to Firebase can take a few moments.</p>
               <div className="mt-2 w-full h-2 bg-muted rounded-full overflow-hidden">
                 <div className="h-full bg-accent animate-pulse" style={{ width: '100%' }}></div>
               </div>
@@ -101,9 +106,9 @@ export function SyncTab() {
               {syncStatus}
             </div>
           )}
-          {synchronizedItems.length > 0 && !error && (
+          {synchronizedItems.length > 0 && (
             <div className="mt-4 w-full">
-              <h3 className="text-lg font-semibold mb-2 text-center">Synchronized Items:</h3>
+              <h3 className="text-lg font-semibold mb-2 text-center">Nombres de tablas sincronizadas:</h3>
               <ul className="list-disc list-inside bg-secondary/50 p-4 rounded-md space-y-1 text-secondary-foreground">
                 {synchronizedItems.map(item => (
                   <li key={item} className="text-sm">{item}</li>
@@ -111,8 +116,13 @@ export function SyncTab() {
               </ul>
             </div>
           )}
+           {firebaseLogId && !error && (
+            <div className="mt-2 text-sm text-muted-foreground text-center flex items-center justify-center">
+              <Database className="mr-1 h-4 w-4" />
+              <span>Firebase Log ID: {firebaseLogId}</span>
+            </div>
+          )}
         </CardContent>
-      </Card>
     </div>
   );
 }

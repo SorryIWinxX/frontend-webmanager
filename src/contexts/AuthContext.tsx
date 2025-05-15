@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 interface AuthContextType {
   currentUser: User | null;
   isLoading: boolean;
-  login: (formData: FormData) => Promise<{ success: boolean; message: string; error?: string }>;
+  login: (formData: FormData) => Promise<{ success: boolean; message: string; error?: string; user?: User }>;
   logout: () => void;
   updateCurrentUser: (updatedUser: User) => void;
   forcePasswordChange: (userId: string, newPassword: string) => Promise<{ success: boolean; message: string }>;
@@ -23,11 +23,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
-    // Simulate loading user from session/localStorage for persistence (optional for "simple")
     const storedUser = localStorage.getItem('currentUser');
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser) as User;
-       // Simulate re-validating session, for now just load
       setCurrentUser(parsedUser);
     }
     setIsLoading(false);
@@ -44,7 +42,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem('currentUser');
     }
     setIsLoading(false);
-    return { success: result.success, message: result.message, error: result.error };
+    // Ensure the full result, including user, is passed back
+    return { success: result.success, message: result.message, error: result.error, user: result.user };
   };
 
   const logout = () => {
@@ -61,8 +60,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const forcePasswordChange = async (userId: string, newPassword: string) => {
     const result = await changePasswordAction(userId, newPassword);
     if (result.success && currentUser) {
-      const updatedUser = { ...currentUser, forcePasswordChange: false };
-      updateCurrentUser(updatedUser);
+      // Only update forcePasswordChange if it was previously true and user is admin
+      // Operators don't use this flow.
+      if (currentUser.role === 'admin' && currentUser.forcePasswordChange) {
+        const updatedUser = { ...currentUser, forcePasswordChange: false };
+        updateCurrentUser(updatedUser);
+      }
     }
     return result;
   };
@@ -81,4 +84,3 @@ export const useAuth = () => {
   }
   return context;
 };
-

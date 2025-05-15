@@ -19,7 +19,7 @@ import type { User } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ChangePasswordDialogProps {
-  user: User;
+  user: User; // Expecting the full user object, but will only proceed if admin and forcePasswordChange is true
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -29,10 +29,15 @@ export function ChangePasswordDialog({ user, open, onOpenChange }: ChangePasswor
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isChanging, startChangeTransition] = useTransition();
   const { toast } = useToast();
-  const { forcePasswordChange } = useAuth();
+  const { forcePasswordChange: authForcePasswordChange } = useAuth(); // Renamed to avoid conflict
+
+  // Only proceed if user is admin and needs to change password
+  const shouldRenderDialog = user.role === 'admin' && user.forcePasswordChange;
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!shouldRenderDialog) return; // Should not happen if dialog is conditionally rendered
+
     if (newPassword !== confirmPassword) {
       toast({
         title: "Passwords do not match",
@@ -51,13 +56,13 @@ export function ChangePasswordDialog({ user, open, onOpenChange }: ChangePasswor
     }
 
     startChangeTransition(async () => {
-      const result = await forcePasswordChange(user.id, newPassword);
+      const result = await authForcePasswordChange(user.id, newPassword);
       if (result.success) {
         toast({
           title: "Password Changed",
           description: "Your password has been updated successfully.",
         });
-        onOpenChange(false); // Close dialog on success
+        onOpenChange(false); 
       } else {
         toast({
           title: "Error Changing Password",
@@ -67,6 +72,10 @@ export function ChangePasswordDialog({ user, open, onOpenChange }: ChangePasswor
       }
     });
   };
+  
+  if (!shouldRenderDialog) {
+    return null; // Don't render the dialog if not applicable
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -74,7 +83,7 @@ export function ChangePasswordDialog({ user, open, onOpenChange }: ChangePasswor
         <DialogHeader>
           <DialogTitle>Change Your Password</DialogTitle>
           <DialogDescription>
-            For security reasons, you must change your temporary password before proceeding.
+            For security reasons, you must change your temporary admin password before proceeding.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4 py-4">

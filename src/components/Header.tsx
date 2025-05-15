@@ -10,24 +10,24 @@ export function Header() {
   const { logout, currentUser } = useAuth();
 
   return (
-    <header className="bg-primary text-primary-foreground p-4 shadow-md">
-      <div className="container mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-2">
+    <header className="bg-gray-800 text-primary-foreground p-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center">
           <Image 
-            src="https://placehold.co/40x40.png" 
+            src="/logos/wytech.png" 
             alt="Company Logo" 
-            width={40} 
-            height={40} 
+            width={80} 
+            height={80}
             data-ai-hint="company logo"
           />
-          <h1 className="text-2xl font-semibold">Desktop Maintenance Hub</h1>
+          <h1 className="text-2xl px-8 font-semibold">App de mantenimiento</h1>
         </div>
         {currentUser && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm hidden sm:inline">Welcome, {currentUser.username} ({currentUser.role})</span>
+          <div className="flex items-center justify-end gap-2">
+            <span className="text-sm hidden sm:inline">Bienvenido, {currentUser.username} ({currentUser.role})</span>
             <Button variant="ghost" size="sm" onClick={logout} className="text-primary-foreground hover:bg-primary/80 hover:text-primary-foreground">
               <LogOut className="mr-1 h-4 w-4" />
-              Logout
+              Salir
             </Button>
           </div>
         )}

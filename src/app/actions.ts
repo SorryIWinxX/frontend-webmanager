@@ -3,6 +3,8 @@
 
 import type { Notice, User, UserRole } from "@/types";
 import { z } from "zod";
+import { db } from '@/lib/firebase'; // Import Firestore instance
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 // Simulate a database or external service
 let notices: Notice[] = [
@@ -126,7 +128,8 @@ let notices: Notice[] = [
 
 let users: User[] = [
   { id: "1", username: "admin", password: "123", role: "admin", forcePasswordChange: false },
-  { id: "2", username: "operator1", password: "password", role: "operator", forcePasswordChange: true },
+  { id: "2", username: "operator1", role: "operator", forcePasswordChange: false, workstation: "Assembly Line 1" },
+  { id: "3", username: "operator2", role: "operator", forcePasswordChange: false, workstation: "Packaging Station 3" },
 ];
 
 const generateRandomPassword = (length: number = 10): string => {
@@ -140,36 +143,53 @@ const generateRandomPassword = (length: number = 10): string => {
 };
 
 const UserSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
+  username: z.string().min(3, "Username must be at least 3 characters (Cedula for operators)"),
   role: z.enum(["admin", "operator"]),
+  workstation: z.string().optional(), // Optional workstation field
 });
+
 
 export async function loginUser(formData: FormData): Promise<{ success: boolean; message: string; user?: User; error?: string }> {
   const username = formData.get("username") as string;
   const password = formData.get("password") as string;
 
-  if (!username || !password) {
-    return { success: false, message: "Username and password are required.", error: "Missing credentials" };
+  if (!username) {
+    return { success: false, message: "Username (Cedula) is required.", error: "Missing username" };
   }
 
   await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-  const user = users.find(u => u.username === username && u.password === password);
+  const user = users.find(u => u.username === username);
 
   if (user) {
-    // In a real app, never send the password back, even a "hashed" one for this simple case.
-    // For this simulation, we send the user object as is.
-    // Create a new object to avoid sending the password back to the client
-    const { password: _, ...userWithoutPassword } = user;
-    return { success: true, message: "Login successful", user: userWithoutPassword };
-  } else {
-    return { success: false, message: "Invalid username or password.", error: "Invalid credentials" };
+    if (user.role === "operator") {
+      // Operators log in with username (cedula) only
+      const { password: _, ...userWithoutPassword } = user;
+      return { success: true, message: "Login successful", user: userWithoutPassword };
+    } else if (user.role === "admin") {
+      // Admins require password
+      if (!password) {
+        return { success: false, message: "Password is required for admin users.", error: "Missing password for admin" };
+      }
+      if (user.password === password) {
+        const { password: _, ...userWithoutPassword } = user;
+        return { success: true, message: "Login successful", user: userWithoutPassword };
+      } else {
+        return { success: false, message: "Invalid password for admin.", error: "Invalid admin credentials" };
+      }
+    }
   }
+  
+  return { success: false, message: "Invalid username or password.", error: "Invalid credentials" };
 }
+
 
 export async function changePassword(userId: string, newPassword: string): Promise<{ success: boolean; message: string }> {
   await new Promise(resolve => setTimeout(resolve, 500));
   const userIndex = users.findIndex(u => u.id === userId);
   if (userIndex > -1) {
+    if (users[userIndex].role === 'operator') {
+      return { success: false, message: "Operators do not use passwords." };
+    }
     users[userIndex].password = newPassword;
     users[userIndex].forcePasswordChange = false;
     return { success: true, message: "Password changed successfully." };
@@ -178,14 +198,35 @@ export async function changePassword(userId: string, newPassword: string): Promi
 }
 
 
-export async function syncFromSAP(): Promise<{ success: boolean; message: string; synchronizedData?: string[] }> {
+export async function syncFromSAP(): Promise<{ success: boolean; message: string; synchronizedData?: string[]; firebaseLogId?: string }> {
   console.log("Attempting to synchronize data from SAP...");
   await new Promise(resolve => setTimeout(resolve, 2000)); 
   
-  const synchronizedData = ["Customer_Data_Table", "Product_Inventory_Table", "Maintenance_Schedules_Table"];
-  console.log("Data synchronized successfully:", synchronizedData);
-  return { success: true, message: "Data successfully synchronized from SAP.", synchronizedData };
+  const synchronizedTableNames = ["Customer_Data_Table", "Product_Inventory_Table", "Maintenance_Schedules_Table"];
+  
+  try {
+    // Store reference to synchronized tables in Firebase
+    const docRef = await addDoc(collection(db, "sap_synchronized_tables"), {
+      tables: synchronizedTableNames,
+      synchronizedAt: serverTimestamp()
+    });
+    console.log("Data synchronized with SAP. Log stored in Firebase with ID: ", docRef.id);
+    return { 
+      success: true, 
+      message: "Data successfully synchronized from SAP and logged to Firebase.", 
+      synchronizedData: synchronizedTableNames,
+      firebaseLogId: docRef.id 
+    };
+  } catch (error) {
+    console.error("Error writing SAP sync log to Firebase: ", error);
+    return { 
+      success: false, 
+      message: "Data synchronized from SAP, but failed to log to Firebase.", 
+      synchronizedData: synchronizedTableNames 
+    };
+  }
 }
+
 
 export async function getNotices(): Promise<Notice[]> {
   await new Promise(resolve => setTimeout(resolve, 500));
@@ -209,7 +250,7 @@ export async function sendNoticesToSAP(noticeIds: string[]): Promise<{ success: 
 
 export async function getUsers(): Promise<User[]> {
   await new Promise(resolve => setTimeout(resolve, 500));
-  // Return users without passwords
+  // Return users without passwords for client display
   return users.map(({ password, ...userWithoutPassword }) => userWithoutPassword);
 }
 
@@ -217,6 +258,7 @@ export async function addUser(formData: FormData): Promise<{ success: boolean; m
   const rawFormData = {
     username: formData.get('username'),
     role: formData.get('role'),
+    workstation: formData.get('workstation') // Get workstation from form
   };
 
   const validationResult = UserSchema.safeParse(rawFormData);
@@ -225,24 +267,42 @@ export async function addUser(formData: FormData): Promise<{ success: boolean; m
     return { success: false, message: "Validation failed", errors: validationResult.error.issues };
   }
   
-  const { username, role } = validationResult.data;
+  const { username, role, workstation } = validationResult.data;
 
   if (users.find(user => user.username === username)) {
-    return { success: false, message: "Username already exists." };
+    return { success: false, message: "Username (Cedula) already exists." };
   }
 
-  const generatedPassword = generateRandomPassword();
   const newUser: User = {
     id: String(users.length + 1),
     username,
-    password: generatedPassword, // Store generated password
     role: role as UserRole,
-    forcePasswordChange: true, // New users must change password
+    forcePasswordChange: false, // Default to false
   };
+
+  let generatedPasswordForAdmin: string | undefined = undefined;
+
+  if (role === "admin") {
+    generatedPasswordForAdmin = generateRandomPassword();
+    newUser.password = generatedPasswordForAdmin;
+    newUser.forcePasswordChange = true; // Admins must change password
+  } else if (role === "operator") {
+    if (!workstation) {
+        return { success: false, message: "Workstation is required for operator role."}
+    }
+    newUser.workstation = workstation;
+    // Operators do not have passwords
+  }
+  
   users.push(newUser);
-  console.log("User added:", newUser); // Log with password for server console only
-  return { success: true, message: `User ${username} added successfully with role ${role}.`, generatedPassword };
+  console.log("User added:", newUser); // Log with password for server console only if admin
+  return { 
+    success: true, 
+    message: `User ${username} added successfully with role ${role}.${role === 'operator' && workstation ? ` Assigned to workstation: ${workstation}.` : ''}`, 
+    generatedPassword: role === "admin" ? generatedPasswordForAdmin : undefined 
+  };
 }
+
 
 export async function deleteUser(userId: string): Promise<{ success: boolean; message: string }> {
   const initialLength = users.length;
@@ -252,4 +312,3 @@ export async function deleteUser(userId: string): Promise<{ success: boolean; me
   }
   return { success: false, message: "User not found." };
 }
-

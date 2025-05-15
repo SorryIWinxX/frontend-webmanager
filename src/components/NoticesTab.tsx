@@ -154,7 +154,7 @@ export function NoticesTab() {
 
 
     return (
-      <Card className="shadow-md mt-6">
+      <Card className="border mt-4">
         <CardHeader>
           <CardTitle className="text-2xl font-semibold text-primary flex items-center">
             {isPendingTable ? <AlertTriangle className="mr-2 h-7 w-7 text-amber-500" /> : <CheckCircle className="mr-2 h-7 w-7 text-green-500" />}
@@ -168,7 +168,7 @@ export function NoticesTab() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto rounded-md border">
+              <div className="overflow-x-auto border">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -270,7 +270,6 @@ export function NoticesTab() {
 
   return (
     <div className="container mx-auto p-0 md:p-2 lg:p-4">
-      <Card className="shadow-xl border-none sm:border sm:rounded-lg">
         <CardHeader>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
@@ -331,7 +330,6 @@ export function NoticesTab() {
             </Fragment>
           )}
         </CardContent>
-      </Card>
 
       {selectedNoticeDetail && (
         <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>

@@ -8,19 +8,28 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from "@/components/ui/badge"; // Added missing import
+import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/hooks/use-toast';
 import { getUsers, addUser, deleteUser } from '@/app/actions';
 import type { User, UserRole } from '@/types';
-import { Loader2, UserPlus, Users as UsersIcon, Trash2, Edit, AlertTriangle, Copy } from 'lucide-react';
+import { Loader2, UserPlus, Users as UsersIcon, Trash2, Edit, AlertTriangle, Copy, Briefcase } from 'lucide-react';
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 const UserFormSchema = z.object({
-  username: z.string().min(3, { message: "Username must be at least 3 characters." }),
+  username: z.string().min(3, { message: "Username (Cedula for operators) must be at least 3 characters." }),
   role: z.enum(["admin", "operator"], { required_error: "Role is required." }),
+  workstation: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.role === "operator" && (!data.workstation || data.workstation.trim() === "")) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Workstation is required for operator role.",
+      path: ["workstation"],
+    });
+  }
 });
 
 type UserFormData = z.infer<typeof UserFormSchema>;
@@ -38,8 +47,17 @@ export function UsersTab() {
     defaultValues: {
       username: "",
       role: "operator",
+      workstation: "",
     },
   });
+
+  const watchedRole = form.watch("role");
+
+  useEffect(() => {
+    if (watchedRole === "admin") {
+      form.setValue("workstation", ""); // Clear workstation if role changes to admin
+    }
+  }, [watchedRole, form]);
 
   const fetchUsers = () => {
     startLoadingUsers(async () => {
@@ -73,6 +91,9 @@ export function UsersTab() {
     const formData = new FormData();
     formData.append('username', data.username);
     formData.append('role', data.role);
+    if (data.role === "operator" && data.workstation) {
+      formData.append('workstation', data.workstation);
+    }
 
     startSubmitting(async () => {
       const result = await addUser(formData);
@@ -81,23 +102,23 @@ export function UsersTab() {
           title: "User Added",
           description: (
             <div>
-              {result.message}
-              {result.generatedPassword && (
+              <p>{result.message}</p>
+              {result.generatedPassword && data.role === "admin" && (
                 <div className="mt-2">
                   Generated Password: 
                   <span className="font-mono bg-muted p-1 rounded mx-1">{result.generatedPassword}</span>
                   <Button variant="ghost" size="icon" className="ml-1 h-6 w-6" onClick={() => copyToClipboard(result.generatedPassword!)}>
                     <Copy className="h-4 w-4" />
                   </Button>
-                  <p className="text-xs text-muted-foreground">User will be forced to change this on first login.</p>
+                  <p className="text-xs text-muted-foreground">Admin user will be forced to change this on first login.</p>
                 </div>
               )}
             </div>
           ),
-          duration: 10000, // Show toast longer for password
+          duration: 10000, 
         });
         fetchUsers();
-        form.reset();
+        form.reset({ username: "", role: "operator", workstation: "" });
         setIsAddUserDialogOpen(false);
       } else {
         if (result.errors) {
@@ -116,7 +137,6 @@ export function UsersTab() {
   };
   
   const handleDeleteUser = (userId: string, username: string) => {
-    // Basic confirmation, consider using AlertDialog for better UX
     const isConfirmed = window.confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`);
     if (!isConfirmed) {
       return;
@@ -136,16 +156,18 @@ export function UsersTab() {
 
   return (
     <div className="container mx-auto p-0 md:p-2 lg:p-4">
-      <Card className="shadow-xl border-none sm:border sm:rounded-lg">
         <CardHeader>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <CardTitle className="text-3xl font-bold text-primary flex items-center"><UsersIcon className="mr-2 h-8 w-8" />User Management</CardTitle>
+              <CardTitle className="text-3xl font-bold text-primary flex items-center"><UsersIcon className="mr-2 h-8 w-8" />Control de usuarios</CardTitle>
               <CardDescription className="text-lg">
-                Create and manage user accounts. New users will receive a generated password and must change it upon first login.
+                Create and manage user accounts. Admins get generated passwords; Operators use Cédula and are assigned a workstation.
               </CardDescription>
             </div>
-            <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
+            <Dialog open={isAddUserDialogOpen} onOpenChange={(open) => {
+              setIsAddUserDialogOpen(open);
+              if (!open) form.reset({ username: "", role: "operator", workstation: "" });
+            }}>
               <DialogTrigger asChild>
                 <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-md">
                   <UserPlus className="mr-2 h-5 w-5" /> Add New User
@@ -155,7 +177,7 @@ export function UsersTab() {
                 <DialogHeader>
                   <DialogTitle>Add New User</DialogTitle>
                   <DialogDescription>
-                    Enter the username and role. A password will be generated.
+                    Enter user details. Admins receive a generated password. Operators use Cédula and need a workstation.
                   </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -165,9 +187,9 @@ export function UsersTab() {
                       name="username"
                       render={({ field }) => (
                         <FormItem className="grid grid-cols-4 items-center gap-4">
-                          <FormLabel className="text-right">Username</FormLabel>
+                          <FormLabel className="text-right">Cédula/Username</FormLabel>
                           <FormControl className="col-span-3">
-                            <Input {...field} placeholder="john.doe" />
+                            <Input {...field} placeholder="Cédula or Admin Username" />
                           </FormControl>
                           <FormMessage className="col-span-3 col-start-2" />
                         </FormItem>
@@ -179,7 +201,10 @@ export function UsersTab() {
                       render={({ field }) => (
                         <FormItem className="grid grid-cols-4 items-center gap-4">
                           <FormLabel className="text-right">Role</FormLabel>
-                           <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                           <Select onValueChange={(value) => {
+                               field.onChange(value);
+                               if (value === "admin") form.setValue("workstation", "");
+                           }} defaultValue={field.value} value={field.value}>
                             <FormControl className="col-span-3">
                                <SelectTrigger>
                                 <SelectValue placeholder="Select a role" />
@@ -194,6 +219,21 @@ export function UsersTab() {
                         </FormItem>
                       )}
                     />
+                    {watchedRole === 'operator' && (
+                      <FormField
+                        control={form.control}
+                        name="workstation"
+                        render={({ field }) => (
+                          <FormItem className="grid grid-cols-4 items-center gap-4">
+                            <FormLabel className="text-right">Workstation</FormLabel>
+                            <FormControl className="col-span-3">
+                              <Input {...field} placeholder="e.g., Assembly Line 1" />
+                            </FormControl>
+                            <FormMessage className="col-span-3 col-start-2" />
+                          </FormItem>
+                        )}
+                      />
+                    )}
                     <DialogFooter>
                        <DialogClose asChild>
                         <Button type="button" variant="outline">Cancel</Button>
@@ -226,8 +266,9 @@ export function UsersTab() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Username</TableHead>
+                    <TableHead>Username/Cédula</TableHead>
                     <TableHead>Role</TableHead>
+                    <TableHead>Workstation</TableHead>
                     <TableHead>Must Change Password</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -236,7 +277,18 @@ export function UsersTab() {
                   {users.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">{user.username}</TableCell>
-                      <TableCell className="capitalize">{user.role}</TableCell>
+                      <TableCell className="capitalize">
+                        <Badge variant={user.role === 'admin' ? 'default' : 'secondary'} className="shadow-sm">
+                            {user.role}
+                        </Badge>
+                      </TableCell>
+                       <TableCell>
+                        {user.role === 'operator' ? (
+                            user.workstation ? <span className="flex items-center"><Briefcase className="mr-2 h-4 w-4 text-muted-foreground" />{user.workstation}</span> : <span className="text-muted-foreground italic">N/A</span>
+                        ) : (
+                            <span className="text-muted-foreground italic">N/A</span>
+                        )}
+                        </TableCell>
                       <TableCell>
                         <Badge variant={user.forcePasswordChange ? "destructive" : "secondary"} className="shadow-sm">
                           {user.forcePasswordChange ? "Yes" : "No"}
@@ -251,7 +303,7 @@ export function UsersTab() {
                           size="icon" 
                           aria-label="Delete user"
                           onClick={() => handleDeleteUser(user.id, user.username)}
-                          disabled={isDeleting || user.username === 'admin'} // Prevent admin deletion for safety
+                          disabled={isDeleting || user.username === 'admin'} 
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -263,8 +315,6 @@ export function UsersTab() {
             </div>
           )}
         </CardContent>
-      </Card>
     </div>
   );
 }
-

@@ -24,6 +24,8 @@ export default function LoginPage() {
     event.preventDefault();
     const formData = new FormData();
     formData.append('username', username);
+    // Password might not be needed for operators, but send it anyway. 
+    // The backend action will decide if it's necessary.
     formData.append('password', password);
 
     startLoginTransition(async () => {
@@ -31,7 +33,7 @@ export default function LoginPage() {
       if (result.success) {
         toast({
           title: "Login Successful",
-          description: "Welcome back!",
+          description: "Welcome!",
         });
         router.replace('/dashboard');
       } else {
@@ -48,28 +50,28 @@ export default function LoginPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
-      <Card className="w-full max-w-md shadow-lg">
+      <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center items-center mb-4">
             <Image 
-              src="https://placehold.co/64x64.png" 
+              src="https://placehold.co/200x80.png?text=App+Logo" 
               alt="Company Logo" 
-              width={64} 
-              height={64} 
-              data-ai-hint="company logo" 
+              width={200} 
+              height={80} 
+              data-ai-hint="app logo" 
             />
           </div>
-          <CardTitle className="text-3xl font-bold text-primary">Desktop Maintenance Hub</CardTitle>
-          <CardDescription className="text-lg">Please sign in to continue</CardDescription>
+          <CardTitle className="text-3xl font-bold text-primary">App de mantenimiento</CardTitle>
+          <CardDescription className="text-lg">Ingresa tus credenciales (Operadores solo Cédula)</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">Cédula / Usuario Admin</Label>
               <Input
                 id="username"
                 type="text"
-                placeholder="Enter your username"
+                placeholder="Ingrese su Cédula o Usuario Admin"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -78,14 +80,14 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Contraseña (Solo para Admins)</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="Enter your password"
+                placeholder="Ingrese su contraseña (si es Admin)"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required
+                // Not strictly required on client as backend handles it
                 disabled={isLoading}
                 className="text-base"
               />
@@ -96,7 +98,7 @@ export default function LoginPage() {
               ) : (
                 <LogIn className="mr-2 h-6 w-6" />
               )}
-              Sign In
+              Ingresar
             </Button>
           </form>
         </CardContent>
