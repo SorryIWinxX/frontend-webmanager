@@ -18,6 +18,19 @@ import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
+const predefinedWorkstations = [
+  'Assembly Line 1', 
+  'Assembly Line 2', 
+  'Packaging Station 1', 
+  'Packaging Station 2', 
+  'Quality Control', 
+  'Warehouse Section A',
+  'Maintenance Bay 1',
+  'Machining Center Alpha',
+  'Welding Booth 3',
+  'Logistics Hub',
+];
+
 const UserFormSchema = z.object({
   username: z.string().min(3, { message: "Username (Cedula for operators) must be at least 3 characters." }),
   role: z.enum(["admin", "operator"], { required_error: "Role is required." }),
@@ -56,6 +69,7 @@ export function UsersTab() {
   useEffect(() => {
     if (watchedRole === "admin") {
       form.setValue("workstation", ""); // Clear workstation if role changes to admin
+      form.clearErrors("workstation"); // Clear any workstation errors
     }
   }, [watchedRole, form]);
 
@@ -201,10 +215,17 @@ export function UsersTab() {
                       render={({ field }) => (
                         <FormItem className="grid grid-cols-4 items-center gap-4">
                           <FormLabel className="text-right">Role</FormLabel>
-                           <Select onValueChange={(value) => {
-                               field.onChange(value);
-                               if (value === "admin") form.setValue("workstation", "");
-                           }} defaultValue={field.value} value={field.value}>
+                           <Select 
+                                onValueChange={(value) => {
+                                    field.onChange(value);
+                                    if (value === "admin") {
+                                        form.setValue("workstation", "");
+                                        form.clearErrors("workstation");
+                                    }
+                                }} 
+                                defaultValue={field.value} 
+                                value={field.value}
+                            >
                             <FormControl className="col-span-3">
                                <SelectTrigger>
                                 <SelectValue placeholder="Select a role" />
@@ -226,9 +247,22 @@ export function UsersTab() {
                         render={({ field }) => (
                           <FormItem className="grid grid-cols-4 items-center gap-4">
                             <FormLabel className="text-right">Workstation</FormLabel>
-                            <FormControl className="col-span-3">
-                              <Input {...field} placeholder="e.g., Assembly Line 1" />
-                            </FormControl>
+                            <Select 
+                                onValueChange={field.onChange} 
+                                defaultValue={field.value}
+                                value={field.value || ""} // Ensure value is not undefined for Select
+                            >
+                              <FormControl className="col-span-3">
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select a workstation" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {predefinedWorkstations.map(ws => (
+                                  <SelectItem key={ws} value={ws}>{ws}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             <FormMessage className="col-span-3 col-start-2" />
                           </FormItem>
                         )}
@@ -318,3 +352,4 @@ export function UsersTab() {
     </div>
   );
 }
+
