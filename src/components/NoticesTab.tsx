@@ -114,12 +114,16 @@ export function NoticesTab() {
     });
   };
 
-  const getStatusBadgeVariant = (status: NoticeStatus): "default" | "secondary" | "destructive" => {
+  const getStatusBadgeVariant = (status: string) => {
     switch (status) {
-      case "Pending": return "secondary";
-      case "Sent": return "default";
-      case "Failed": return "destructive";
-      default: return "secondary";
+      case "completed":
+        return "default"; // Or another variant based on your design
+      case "in_progress":
+        return "secondary"; // Or another variant
+      case "error":
+        return "destructive"; // Or another variant
+      default:
+        return "outline"; // Or another default variant
     }
   };
 
@@ -182,12 +186,12 @@ export function NoticesTab() {
                           />
                         </TableHead>
                       )}
-                      <TableHead className="w-[80px]">Image</TableHead>
+                      <TableHead className="w-[80px]">Imagen</TableHead>
                       <TableHead>Title</TableHead>
-                      <TableHead className="hidden md:table-cell max-w-xs">Description</TableHead>
-                      <TableHead className="hidden sm:table-cell">Date</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Details</TableHead>
+                      <TableHead className="hidden md:table-cell max-w-xs">Descripcion</TableHead>
+                      <TableHead className="hidden sm:table-cell">Fecha</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead className="text-right">Detalles</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -273,9 +277,9 @@ export function NoticesTab() {
         <CardHeader>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <CardTitle className="text-3xl font-bold text-primary flex items-center"><ListChecks className="mr-2 h-8 w-8" />Maintenance Notices</CardTitle>
+              <CardTitle className="text-3xl font-bold text-primary flex items-center"><ListChecks className="mr-2 h-8 w-8" />Avisos de mantenimiento</CardTitle>
               <CardDescription className="text-lg">
-                View, manage, and send maintenance notices to SAP.
+              Ver, administrar y enviar avisos de mantenimiento a SAP.
               </CardDescription>
             </div>
             <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
@@ -288,7 +292,7 @@ export function NoticesTab() {
                         disabled={pendingNotices.length === 0}
                     />
                     <label htmlFor="select-all-pending-header" className="text-sm font-medium text-muted-foreground cursor-pointer">
-                        Select All Pending ({pendingNotices.length})
+                        Seleccionar todos los pendientes ({pendingNotices.length})
                     </label>
                 </div>
               )}
@@ -299,7 +303,7 @@ export function NoticesTab() {
                 aria-live="polite"
               >
                 {isSending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Send className="mr-2 h-5 w-5" />}
-                Send Selected to SAP ({selectedNotices.filter(id => pendingNotices.some(pn => pn.id === id)).length})
+                Enviar a SAP ({selectedNotices.filter(id => pendingNotices.some(pn => pn.id === id)).length})
               </Button>
             </div>
           </div>
@@ -308,7 +312,7 @@ export function NoticesTab() {
           {isLoadingNotices ? (
             <div className="flex justify-center items-center h-64">
               <Loader2 className="h-12 w-12 animate-spin text-primary" />
-              <p className="ml-4 text-lg text-muted-foreground">Loading notices...</p>
+              <p className="ml-4 text-lg text-muted-foreground">Cargando avisos...</p>
             </div>
           ) : (
             <Fragment>
@@ -317,13 +321,13 @@ export function NoticesTab() {
               {notices.length > 0 && pendingNotices.length === 0 && !isLoadingNotices && (
                 <div className="mt-6 p-4 bg-green-500/10 text-green-700 border border-green-500/20 rounded-md text-center">
                     <CheckCircle className="inline-block mr-2 h-5 w-5" />
-                    All notices have been processed. No pending items.
+                    No hay avisos pendientes de revision.
                 </div>
                )}
                {notices.length === 0 && !isLoadingNotices && (
                  <div className="text-center py-10 col-span-1 sm:col-span-2">
                     <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                    <p className="text-xl text-muted-foreground">No maintenance notices found.</p>
+                    <p className="text-xl text-muted-foreground">Ningun aviso encontrado.</p>
                     <p className="text-sm text-muted-foreground">Check back later or try synchronizing data if notices are expected.</p>
                   </div>
                )}
@@ -337,7 +341,7 @@ export function NoticesTab() {
             <DialogHeader>
               <DialogTitle className="text-2xl">{selectedNoticeDetail.title}</DialogTitle>
               <DialogDescription>
-                Status: <Badge variant={getStatusBadgeVariant(selectedNoticeDetail.status)}>{selectedNoticeDetail.status}</Badge> | Date: {format(new Date(selectedNoticeDetail.date), "PPP p")}
+                Estado: <Badge variant={getStatusBadgeVariant(selectedNoticeDetail.status)}>{selectedNoticeDetail.status}</Badge> | Fecha: {format(new Date(selectedNoticeDetail.date), "PPP p")}
               </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[60vh] p-1 pr-4"> {/* Added pr-4 for scrollbar spacing */}
@@ -354,7 +358,7 @@ export function NoticesTab() {
                   </div>
                 )}
                 <div>
-                  <h3 className="font-semibold text-lg mb-1">Description:</h3>
+                  <h3 className="font-semibold text-lg mb-1">Descripcion:</h3>
                   <p className="text-muted-foreground">{selectedNoticeDetail.description}</p>
                 </div>
                 {selectedNoticeDetail.detailedInfo && (
@@ -366,7 +370,7 @@ export function NoticesTab() {
               </div>
             </ScrollArea>
             <CardFooter className="pt-4"> {/* Assuming CardFooter is styled to be a DialogFooter equivalent */}
-                <Button onClick={() => setIsDetailDialogOpen(false)} variant="outline" className="w-full">Close</Button>
+                <Button onClick={() => setIsDetailDialogOpen(false)} variant="outline" className="w-full">Cerrar</Button>
             </CardFooter>
           </DialogContent>
         </Dialog>

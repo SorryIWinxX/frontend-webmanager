@@ -54,7 +54,7 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <div className="flex justify-center items-center mb-4">
             <Image 
-              src="https://placehold.co/200x80.png?text=App+Logo" 
+              src="/logos/wytech.png" 
               alt="Company Logo" 
               width={200} 
               height={80} 
@@ -62,12 +62,12 @@ export default function LoginPage() {
             />
           </div>
           <CardTitle className="text-3xl font-bold text-primary">App de mantenimiento</CardTitle>
-          <CardDescription className="text-lg">Ingresa tus credenciales (Operadores solo Cédula)</CardDescription>
+          <CardDescription className="text-lg">Ingresa tus credenciales</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="username">Cédula / Usuario Admin</Label>
+              <Label htmlFor="username">Usuario Admin</Label>
               <Input
                 id="username"
                 type="text"
@@ -80,7 +80,7 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Contraseña (Solo para Admins)</Label>
+              <Label htmlFor="password">Contraseña</Label>
               <Input
                 id="password"
                 type="password"

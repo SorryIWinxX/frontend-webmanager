@@ -175,7 +175,7 @@ export function UsersTab() {
             <div>
               <CardTitle className="text-3xl font-bold text-primary flex items-center"><UsersIcon className="mr-2 h-8 w-8" />Control de usuarios</CardTitle>
               <CardDescription className="text-lg">
-                Create and manage user accounts. Admins get generated passwords; Operators use Cédula and are assigned a workstation.
+                Crea un nuevo usuario o elimina uno existente.
               </CardDescription>
             </div>
             <Dialog open={isAddUserDialogOpen} onOpenChange={(open) => {
@@ -184,14 +184,14 @@ export function UsersTab() {
             }}>
               <DialogTrigger asChild>
                 <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-md">
-                  <UserPlus className="mr-2 h-5 w-5" /> Add New User
+                  <UserPlus className="mr-2 h-5 w-5" /> Nuevo usuario
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                  <DialogTitle>Add New User</DialogTitle>
+                  <DialogTitle>Nuevo Usuario</DialogTitle>
                   <DialogDescription>
-                    Enter user details. Admins receive a generated password. Operators use Cédula and need a workstation.
+                    Administradores se le va generar contraseña y para los operadores solamente entran con la cedula.
                   </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -201,9 +201,9 @@ export function UsersTab() {
                       name="username"
                       render={({ field }) => (
                         <FormItem className="grid grid-cols-4 items-center gap-4">
-                          <FormLabel className="text-right">Cédula/Username</FormLabel>
+                          <FormLabel className="text-right">Usuario</FormLabel>
                           <FormControl className="col-span-3">
-                            <Input {...field} placeholder="Cédula or Admin Username" />
+                            <Input {...field} placeholder="Cédula o Admin" />
                           </FormControl>
                           <FormMessage className="col-span-3 col-start-2" />
                         </FormItem>
@@ -233,7 +233,7 @@ export function UsersTab() {
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="admin">Admin</SelectItem>
-                              <SelectItem value="operator">Operator</SelectItem>
+                              <SelectItem value="operator">Operario</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage className="col-span-3 col-start-2" />
@@ -246,7 +246,7 @@ export function UsersTab() {
                         name="workstation"
                         render={({ field }) => (
                           <FormItem className="grid grid-cols-4 items-center gap-4">
-                            <FormLabel className="text-right">Workstation</FormLabel>
+                            <FormLabel className="text-right">Puesto de trabajo</FormLabel>
                             <Select 
                                 onValueChange={field.onChange} 
                                 defaultValue={field.value}
@@ -254,7 +254,7 @@ export function UsersTab() {
                             >
                               <FormControl className="col-span-3">
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Select a workstation" />
+                                  <SelectValue placeholder="Selecciona un puesto de trabajo" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
@@ -270,11 +270,11 @@ export function UsersTab() {
                     )}
                     <DialogFooter>
                        <DialogClose asChild>
-                        <Button type="button" variant="outline">Cancel</Button>
+                        <Button type="button" variant="outline">Cancelar</Button>
                       </DialogClose>
                       <Button type="submit" disabled={isSubmitting} className="bg-accent hover:bg-accent/90 text-accent-foreground">
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Add User
+                        Crear usuario
                       </Button>
                     </DialogFooter>
                   </form>
@@ -287,24 +287,24 @@ export function UsersTab() {
           {isLoadingUsers ? (
             <div className="flex justify-center items-center h-64">
               <Loader2 className="h-12 w-12 animate-spin text-primary" />
-              <p className="ml-4 text-lg text-muted-foreground">Loading users...</p>
+              <p className="ml-4 text-lg text-muted-foreground">Cargando usuarios...</p>
             </div>
           ) : users.length === 0 ? (
              <div className="text-center py-10">
                 <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-xl text-muted-foreground">No users found.</p>
-                <p className="text-sm text-muted-foreground">Click "Add New User" to create the first account.</p>
+                <p className="text-xl text-muted-foreground">No se ha encontrado ningun usuario.</p>
+                <p className="text-sm text-muted-foreground">Crea un nuevo usuario.</p>
               </div>
           ) : (
             <div className="overflow-x-auto rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Username/Cédula</TableHead>
+                    <TableHead>Usuario/Cédula</TableHead>
                     <TableHead>Role</TableHead>
-                    <TableHead>Workstation</TableHead>
-                    <TableHead>Must Change Password</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>Puesto de trabajo</TableHead>
+                    <TableHead>Contraseña</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
