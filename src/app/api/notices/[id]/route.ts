@@ -24,7 +24,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Invalid input", details: validationResult.error.flatten() }, { status: 400 });
     }
     
-    // Check if notice exists before attempting update
     const existingNotice = await getMaintenanceNoticeByIdForAPI(id);
     if (!existingNotice) {
         return NextResponse.json({ error: "Notice not found" }, { status: 404 });
@@ -32,7 +31,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     const updatedNotice = await updateMaintenanceNoticeAction(id, validationResult.data);
     
-    if (!updatedNotice) { // Should be redundant due to check above, but good practice
+    if (!updatedNotice) { 
         return NextResponse.json({ error: "Notice not found or update failed" }, { status: 404 });
     }
     

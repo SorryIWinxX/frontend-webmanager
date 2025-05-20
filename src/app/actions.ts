@@ -1,7 +1,7 @@
 
 "use server";
 
-import type { Notice, User, UserRole, MaintenanceNoticeAPI, SAPOrder, NoticeStatus } from "@/types";
+import type { User, UserRole, MaintenanceNoticeAPI, SAPOrder, NoticeStatus } from "@/types";
 import { CreateMaintenanceNoticeInput, UpdateMaintenanceNoticeInput } from "@/lib/schemas";
 import { z } from "zod";
 import { db } from '@/lib/firebase';
@@ -12,46 +12,120 @@ let noticesStore: MaintenanceNoticeAPI[] = [
   { 
     id: "1", 
     shortText: "Machine A Maintenance", 
-    causeText: "Scheduled maintenance for Machine A, requires oil change and filter replacement.", 
+    causeText: "Scheduled maintenance for Machine A, requires oil change and filter replacement. Also check alignment and belt tension.", 
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(), 
     status: "Pending", 
     priority: "Medium",
     reporterName: "Operator Joe",
     equipmentNumber: "EQ-001",
-    functionalLocation: "FL-A1",
-    imageUrl: "https://placehold.co/600x400.png", // Keep for UI compatibility
+    functionalLocation: "FL-A1-BAY7",
+    assembly: "ASM-MAINDRIVE-001",
+    requiredStartDate: "2024-07-15",
+    requiredStartTime: "08:00",
+    requiredEndDate: "2024-07-15",
+    requiredEndTime: "12:00",
+    workCenterObjectId: "WC-MECH-01",
+    malfunctionEndDate: "2024-07-10",
+    malfunctionEndTime: "14:30",
+    startPoint: "Section A",
+    endPoint: "Section B",
+    length: 100,
+    linearUnit: "MTR",
+    problemCodeGroup: "MECHFAIL",
+    problemCode: "LUBRICATE",
+    objectPartCodeGroup: "BEARINGS",
+    objectPartCode: "BRG-00123",
+    imageUrl: "https://placehold.co/600x400.png",
     data_ai_hint: "industrial equipment",
-    detailedInfo: "Machine A (Serial: XZ-7890) requires its 500-hour maintenance. Tasks include: full oil change (use Mobil DTE 25), hydraulic filter replacement (Part No. HF-123), lubrication of all joints, and system diagnostics check. Estimated downtime: 4 hours. Technician: John Doe."
   },
   { 
     id: "2", 
     shortText: "Sensor B2 Offline", 
-    causeText: "Sensor B2 on production line 3 is offline. Investigate immediately.", 
+    causeText: "Sensor B2 on production line 3 is offline. Investigate cabling and power supply immediately. Possible water ingress.", 
     createdAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
     updatedAt: new Date(Date.now() - 86400000).toISOString(),
     status: "Pending", 
     priority: "High",
     reporterName: "Operator Jane",
-    equipmentNumber: "EQ-SENS-002",
-    functionalLocation: "FL-PL3-B2",
+    equipmentNumber: "EQ-SENS-002B",
+    functionalLocation: "FL-PL3-CTRL",
+    assembly: "SENSOR-RACK-03",
+    requiredStartDate: "2024-07-14",
+    requiredStartTime: "09:00",
+    workCenterObjectId: "WC-ELEC-02",
+    problemCodeGroup: "ELECFAIL",
+    problemCode: "NOSIGNAL",
+    objectPartCodeGroup: "SENSOR",
+    objectPartCode: "SENS-OPT-004B",
     imageUrl: "https://placehold.co/600x400.png",
     data_ai_hint: "sensor error",
-    detailedInfo: "Sensor B2 (Type: Optical, Model: SENS-OPT-004B) on Line 3, Segment 4, stopped transmitting data at 08:45 AM. Check power supply, data cable, and sensor integrity. Possible replacement needed. Refer to sensor manual Section 5.2 for troubleshooting."
   },
   { 
     id: "3", 
     shortText: "Software Update Deployed", 
-    causeText: "Control panel software v2.5 has been successfully deployed to all units.", 
+    causeText: "Control panel software v2.5 has been successfully deployed to all HMI units in plant 2. Monitoring for issues.", 
     createdAt: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
     updatedAt: new Date(Date.now() - 172800000).toISOString(),
     status: "Sent", 
     priority: "Low",
     reporterName: "System Admin",
+    equipmentNumber: "HMI-ALL-P2",
+    functionalLocation: "PLANT2-CTRLRMS",
+    workCenterObjectId: "WC-IT-SOFT",
+    problemCodeGroup: "INFO",
+    problemCode: "UPDATE_OK",
     imageUrl: "https://placehold.co/600x400.png",
     data_ai_hint: "software update",
-    detailedInfo: "The mandatory software update to version 2.5 for all CP-5000 control panels was completed on schedule. Key features: improved UI response, new diagnostic tools, and enhanced security protocols. No issues reported post-deployment."
   },
+  {
+    id: "4",
+    shortText: "Leak in Hydraulic Press HP-05",
+    causeText: "Operator reported a minor hydraulic fluid leak near the main cylinder of HP-05. Requires inspection and seal replacement if necessary.",
+    createdAt: new Date(Date.now() - 3 * 86400000).toISOString(), // 3 days ago
+    updatedAt: new Date(Date.now() - 2 * 86400000).toISOString(), // updated 2 days ago
+    status: "Sent",
+    priority: "Medium",
+    reporterName: "Operator Mike",
+    equipmentNumber: "EQ-HYDPRESS-05",
+    functionalLocation: "FL-PRESSSHOP-A3",
+    assembly: "HP05-CYLINDER-MAIN",
+    requiredStartDate: "2024-07-12",
+    requiredStartTime: "10:00",
+    workCenterObjectId: "WC-MECH-HYD",
+    problemCodeGroup: "LEAK",
+    problemCode: "HYDFLUID",
+    objectPartCodeGroup: "SEALS",
+    objectPartCode: "SEAL-HYD-50MM",
+    imageUrl: "https://placehold.co/600x400.png",
+    data_ai_hint: "hydraulic leak",
+  },
+  {
+    id: "5",
+    shortText: "Conveyor Belt C-12 Slipping",
+    causeText: "Conveyor belt C-12 in packaging area shows signs of slipping under load. Needs tension adjustment and inspection of drive motor.",
+    createdAt: new Date(Date.now() - 4 * 86400000).toISOString(), // 4 days ago
+    updatedAt: new Date(Date.now() - 4 * 86400000).toISOString(),
+    status: "Pending",
+    priority: "High",
+    reporterName: "Operator Sarah",
+    equipmentNumber: "EQ-CONV-C12",
+    functionalLocation: "FL-PACKAGING-LN1",
+    assembly: "C12-DRIVEUNIT",
+    requiredStartDate: "2024-07-11",
+    requiredStartTime: "08:00",
+    requiredEndDate: "2024-07-11",
+    requiredEndTime: "10:00",
+    workCenterObjectId: "WC-MECH-GEN",
+    malfunctionEndDate: "2024-07-10",
+    malfunctionEndTime: "16:00",
+    problemCodeGroup: "MECHFAIL",
+    problemCode: "SLIPPING",
+    objectPartCodeGroup: "BELT",
+    objectPartCode: "CONVBELT-1200MM",
+    imageUrl: "https://placehold.co/600x400.png",
+    data_ai_hint: "conveyor belt",
+  }
 ];
 
 let sapOrdersStore: SAPOrder[] = [
@@ -65,25 +139,37 @@ let sapOrdersStore: SAPOrder[] = [
         priority: "High",
         equipmentNumber: "EQ-001",
         equipmentDescription: "Main Production Machine Alpha",
-        functionalLocationLabel: "FL-A1",
-        functionalLocationDescription: "Production Area 1, Bay 1",
+        functionalLocationLabel: "FL-A1-BAY7",
+        functionalLocationDescription: "Production Area 1, Bay 7",
         mainWorkCenter: "MECH-TEAM",
         responsiblePersonName: "John Doe",
+        assembly: "ASM-MAINDRIVE-001",
+        maintenancePlant: "PLANT_X",
+        plannerGroup: "PG-MECH",
+        planningPlant: "PLANT_X",
+        workCenter: "MECH-01",
+        activityType: "REPAIR"
     },
     {
         orderNumber: "ORD-002",
         orderType: "Preventive Maintenance",
-        notificationNumber: "2", // Matches noticeStore ID
+        notificationNumber: "4", // Matches noticeStore ID for leak
         enteredBy: "SAPUser2",
         createdOn: new Date(Date.now() - 70000000).toISOString(),
-        description: "Inspect Sensor B2 connections",
+        description: "Inspect and seal Hydraulic Press HP-05",
         priority: "Medium",
-        equipmentNumber: "EQ-SENS-002",
-        equipmentDescription: "Optical Sensor Line 3",
-        functionalLocationLabel: "FL-PL3-B2",
-        functionalLocationDescription: "Production Line 3, Sensor Bank 2",
-        mainWorkCenter: "ELEC-TEAM",
+        equipmentNumber: "EQ-HYDPRESS-05",
+        equipmentDescription: "Hydraulic Press 50 Ton",
+        functionalLocationLabel: "FL-PRESSSHOP-A3",
+        functionalLocationDescription: "Press Shop Area, Bay 3",
+        mainWorkCenter: "ELEC-TEAM", // Should be MECH for hydraulic
         responsiblePersonName: "Jane Smith",
+        assembly: "HP05-CYLINDER-MAIN",
+        maintenancePlant: "PLANT_Y",
+        plannerGroup: "PG-HYD",
+        planningPlant: "PLANT_Y",
+        workCenter: "MECH-HYD-01",
+        activityType: "INSPECT"
     }
 ];
 
@@ -162,7 +248,7 @@ export async function syncFromSAP(): Promise<{ success: boolean; message: string
   console.log("Attempting to synchronize data from SAP...");
   await new Promise(resolve => setTimeout(resolve, 2000)); 
   
-  const synchronizedTableNames = ["Customer_Data_Table", "Product_Inventory_Table", "Maintenance_Schedules_Table"];
+  const synchronizedTableNames = ["Customer_Data_Table", "Product_Inventory_Table", "Maintenance_Schedules_Table", "SAP_Orders_Table_Mock"];
   
   try {
     const docRef = await addDoc(collection(db, "sap_synchronized_tables"), {
@@ -187,27 +273,12 @@ export async function syncFromSAP(): Promise<{ success: boolean; message: string
   }
 }
 
-// Updated getNotices for UI: maps MaintenanceNoticeAPI to simpler Notice
-export async function getNotices(): Promise<Notice[]> {
+// Returns full MaintenanceNoticeAPI objects for UI (NoticesTab) and API
+export async function getNotices(): Promise<MaintenanceNoticeAPI[]> {
   await new Promise(resolve => setTimeout(resolve, 500));
-  return noticesStore
-    .map(apiNotice => ({
-      id: apiNotice.id,
-      title: apiNotice.shortText,
-      description: apiNotice.causeText || apiNotice.shortText, // Fallback for description
-      date: apiNotice.createdAt, // Or apiNotice.requiredStartDate if more relevant for UI
-      status: apiNotice.status,
-      imageUrl: apiNotice.imageUrl,
-      detailedInfo: apiNotice.detailedInfo || apiNotice.causeText, // Fallback for detailedInfo
-    }))
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  return [...noticesStore].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
-// New function for API to get full MaintenanceNoticeAPI objects
-export async function getAllMaintenanceNoticesForAPI(): Promise<MaintenanceNoticeAPI[]> {
-    await new Promise(resolve => setTimeout(resolve, 100)); // Shorter delay for API
-    return [...noticesStore].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-}
 
 export async function getMaintenanceNoticeByIdForAPI(id: string): Promise<MaintenanceNoticeAPI | undefined> {
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -225,10 +296,34 @@ export async function createMaintenanceNoticeAction(data: CreateMaintenanceNotic
         status: "Pending", // Default status on creation
         createdAt: now,
         updatedAt: now,
+        shortText: data.shortText, 
         // Ensure all required fields from MaintenanceNoticeAPI are present, even if optional in input
-        shortText: data.shortText, // Already required in input
+        // Many fields are optional in schema but part of MaintenanceNoticeAPI type
+        equipmentNumber: data.equipmentNumber || undefined,
+        functionalLocation: data.functionalLocation || undefined,
+        assembly: data.assembly || undefined,
+        priority: data.priority || undefined,
+        requiredStartDate: data.requiredStartDate || undefined,
+        requiredStartTime: data.requiredStartTime || undefined,
+        requiredEndDate: data.requiredEndDate || undefined,
+        requiredEndTime: data.requiredEndTime || undefined,
+        workCenterObjectId: data.workCenterObjectId || undefined,
+        malfunctionEndDate: data.malfunctionEndDate || undefined,
+        malfunctionEndTime: data.malfunctionEndTime || undefined,
+        reporterName: data.reporterName || undefined,
+        startPoint: data.startPoint || undefined,
+        endPoint: data.endPoint || undefined,
+        length: data.length || undefined,
+        linearUnit: data.linearUnit || undefined,
+        problemCodeGroup: data.problemCodeGroup || undefined,
+        problemCode: data.problemCode || undefined,
+        objectPartCodeGroup: data.objectPartCodeGroup || undefined,
+        objectPartCode: data.objectPartCode || undefined,
+        causeText: data.causeText || undefined,
+        imageUrl: "https://placehold.co/600x400.png", // Default image
+        data_ai_hint: "new notice"
     };
-    noticesStore.push(newNotice);
+    noticesStore.unshift(newNotice); // Add to the beginning of the array
     return newNotice;
 }
 
@@ -254,6 +349,9 @@ export async function sendNoticesToSAP(noticeIds: string[]): Promise<{ success: 
 
   noticesStore = noticesStore.map(notice => {
     if (noticeIds.includes(notice.id)) {
+      // Here you would typically send the full notice object to SAP
+      // For this mock, we just update the status
+      console.log("Sending notice to SAP (mock):", notice);
       return { ...notice, status: "Sent" as NoticeStatus, updatedAt: new Date().toISOString() };
     }
     return notice;

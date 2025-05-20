@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { CreateMaintenanceNoticeSchema } from '@/lib/schemas';
 import { 
     createMaintenanceNoticeAction, 
-    getAllMaintenanceNoticesForAPI 
+    getNotices // Using getNotices as it now returns MaintenanceNoticeAPI[]
 } from '@/app/actions';
 
 export async function POST(request: NextRequest) {
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof Error) {
         errorMessage = error.message;
     }
-     if (error instanceof SyntaxError) { // Specifically catch JSON parsing errors
+     if (error instanceof SyntaxError) { 
       return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
     }
     return NextResponse.json({ error: errorMessage }, { status: 500 });
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const notices = await getAllMaintenanceNoticesForAPI();
+    const notices = await getNotices(); // getNotices now returns MaintenanceNoticeAPI[]
     return NextResponse.json(notices, { status: 200 });
   } catch (error) {
     console.error("Error fetching maintenance notices:", error);

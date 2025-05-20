@@ -7,45 +7,34 @@ export interface MaintenanceNoticeAPI {
   equipmentNumber?: string;
   functionalLocation?: string;
   assembly?: string;
-  shortText: string; // Will be used as 'title' in the simpler UI Notice
+  shortText: string; 
   priority?: string;
   requiredStartDate?: string; // Format: YYYY-MM-DD
   requiredStartTime?: string; // Format: HH:MM
   requiredEndDate?: string; // Format: YYYY-MM-DD
   requiredEndTime?: string; // Format: HH:MM
-  workCenterObjectId?: string;
+  workCenterObjectId?: string; // Object ID of the Work Center
   malfunctionEndDate?: string; // Format: YYYY-MM-DD
   malfunctionEndTime?: string; // Format: HH:MM
-  reporterName?: string;
+  reporterName?: string; // Name of Person Reporting Notification
   startPoint?: string;
   endPoint?: string;
   length?: number;
-  linearUnit?: string;
-  problemCodeGroup?: string;
-  problemCode?: string;
-  objectPartCodeGroup?: string;
-  objectPartCode?: string;
-  causeText?: string; // Will be used as 'description' in the simpler UI Notice
+  linearUnit?: string; // Unit of Measurement for Linear Data
+  problemCodeGroup?: string; // Code Group - Problem
+  problemCode?: string; // Problem or Damage Code
+  objectPartCodeGroup?: string; // Code Group - Object Parts
+  objectPartCode?: string; // Part of Object
+  causeText?: string; 
 
   status: NoticeStatus;
   createdAt: string; // ISO DateTime string
   updatedAt: string; // ISO DateTime string
 
-  // Fields from original simple Notice type for potential UI use / data completeness
-  imageUrl?: string; // This might be added by the desktop app later
-  detailedInfo?: string; // This could be a concatenation or specific details for UI
-}
-
-
-// Simplified Notice type for the existing UI (Desktop App)
-export interface Notice {
-  id: string;
-  title: string;
-  description: string;
-  date: string; // ISO date string (derived from MaintenanceNoticeAPI's createdAt or requiredStartDate)
-  status: NoticeStatus;
-  imageUrl?: string;
-  detailedInfo?: string;
+  imageUrl?: string; 
+  data_ai_hint?: string; // For placeholder image generation
+  // detailedInfo might be redundant if all fields are displayed, or could be a summary.
+  // For now, we will rely on displaying individual fields.
 }
 
 export type UserRole = "admin" | "operator";
@@ -69,22 +58,22 @@ export interface SAPOrder {
   createdOn?: string; // ISO DateTime string
   lastChangedBy?: string;
   description?: string; // Short text of the order
-  abcIndicator?: string;
+  abcIndicator?: string; // ABC indicator for technical object
   priority?: string;
   equipmentNumber?: string;
-  equipmentDescription?: string;
+  equipmentDescription?: string; // Description of technical object
   functionalLocationLabel?: string;
   functionalLocationDescription?: string;
   assembly?: string;
-  planningPlant?: string;
-  plannerGroup?: string;
-  mainWorkCenter?: string;
-  responsiblePersonName?: string;
+  planningPlant?: string; // Maintenance Planning Plant
+  plannerGroup?: string; // Responsible planner group/department
+  mainWorkCenter?: string; // Main work center for maintenance tasks
+  responsiblePersonName?: string; // Name of Person Reponsible for System
   maintenancePlant?: string;
   workCenter?: string; // Specific work center for the task
-  activityType?: string;
+  activityType?: string; // Maintenance activity type
   startPoint?: string;
-  endPoint?: string;
+  endPoint?: string; 
   length?: number;
-  linearUnit?: string;
+  linearUnit?: string; // Unit of Measurement for Linear Data
 }
