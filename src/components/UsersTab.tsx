@@ -303,7 +303,7 @@ export function UsersTab() {
                     <TableHead>Usuario/Cédula</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Puesto de trabajo</TableHead>
-                    <TableHead>Contraseña</TableHead>
+                    <TableHead>Cambio Contraseña Pendiente</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -324,9 +324,13 @@ export function UsersTab() {
                         )}
                         </TableCell>
                       <TableCell>
-                        <Badge variant={user.forcePasswordChange ? "destructive" : "secondary"} className="shadow-sm">
-                          {user.forcePasswordChange ? "Yes" : "No"}
-                        </Badge>
+                        {user.role === 'admin' ? (
+                          <Badge variant={user.forcePasswordChange ? "destructive" : "secondary"} className="shadow-sm">
+                            {user.forcePasswordChange ? "Sí" : "No"}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground italic">No Aplica</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right space-x-2">
                         <Button variant="ghost" size="icon" aria-label="Edit user" disabled> {/* Edit is illustrative */}
