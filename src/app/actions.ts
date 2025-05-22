@@ -11,13 +11,14 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 let noticesStore: MaintenanceNoticeAPI[] = [
   { 
     id: "1", 
-    shortText: "Machine A Maintenance", 
-    causeText: "Scheduled maintenance for Machine A, requires oil change and filter replacement. Also check alignment and belt tension.", 
+    noticeType: "M1",
+    shortText: "Mantenimiento Maquina A", 
+    causeText: "Mantenimiento programado para Máquina A, requiere cambio de aceite y reemplazo de filtro. También verificar alineación y tensión de la correa.", 
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(), 
-    status: "Pending", 
-    priority: "Medium",
-    reporterName: "Operator Joe",
+    status: "Pendiente", 
+    priority: "Media",
+    reporterName: "Operador Juan",
     equipmentNumber: "EQ-001",
     functionalLocation: "FL-A1-BAY7",
     assembly: "ASM-MAINDRIVE-001",
@@ -28,8 +29,8 @@ let noticesStore: MaintenanceNoticeAPI[] = [
     workCenterObjectId: "WC-MECH-01",
     malfunctionEndDate: "2024-07-10",
     malfunctionEndTime: "14:30",
-    startPoint: "Section A",
-    endPoint: "Section B",
+    startPoint: "Sección A",
+    endPoint: "Sección B",
     length: 100,
     linearUnit: "MTR",
     problemCodeGroup: "MECHFAIL",
@@ -41,13 +42,14 @@ let noticesStore: MaintenanceNoticeAPI[] = [
   },
   { 
     id: "2", 
-    shortText: "Sensor B2 Offline", 
-    causeText: "Sensor B2 on production line 3 is offline. Investigate cabling and power supply immediately. Possible water ingress.", 
+    noticeType: "M2",
+    shortText: "Sensor B2 fuera de línea", 
+    causeText: "Sensor B2 en la línea de producción 3 está fuera de línea. Investigar cableado y suministro de energía inmediatamente. Posible ingreso de agua.", 
     createdAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
     updatedAt: new Date(Date.now() - 86400000).toISOString(),
-    status: "Pending", 
-    priority: "High",
-    reporterName: "Operator Jane",
+    status: "Pendiente", 
+    priority: "Alta",
+    reporterName: "Operadora Ana",
     equipmentNumber: "EQ-SENS-002B",
     functionalLocation: "FL-PL3-CTRL",
     assembly: "SENSOR-RACK-03",
@@ -63,13 +65,14 @@ let noticesStore: MaintenanceNoticeAPI[] = [
   },
   { 
     id: "3", 
-    shortText: "Software Update Deployed", 
-    causeText: "Control panel software v2.5 has been successfully deployed to all HMI units in plant 2. Monitoring for issues.", 
+    noticeType: "M3",
+    shortText: "Actualización de Software Desplegada", 
+    causeText: "Software del panel de control v2.5 desplegado exitosamente en todas las unidades HMI de la planta 2. Monitoreando problemas.", 
     createdAt: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
     updatedAt: new Date(Date.now() - 172800000).toISOString(),
-    status: "Sent", 
-    priority: "Low",
-    reporterName: "System Admin",
+    status: "Enviado", 
+    priority: "Baja",
+    reporterName: "Admin de Sistemas",
     equipmentNumber: "HMI-ALL-P2",
     functionalLocation: "PLANT2-CTRLRMS",
     workCenterObjectId: "WC-IT-SOFT",
@@ -80,13 +83,14 @@ let noticesStore: MaintenanceNoticeAPI[] = [
   },
   {
     id: "4",
-    shortText: "Leak in Hydraulic Press HP-05",
-    causeText: "Operator reported a minor hydraulic fluid leak near the main cylinder of HP-05. Requires inspection and seal replacement if necessary.",
+    noticeType: "M1",
+    shortText: "Fuga en Prensa Hidráulica HP-05",
+    causeText: "Operador reportó fuga menor de fluido hidráulico cerca del cilindro principal de HP-05. Requiere inspección y reemplazo de sellos si es necesario.",
     createdAt: new Date(Date.now() - 3 * 86400000).toISOString(), // 3 days ago
     updatedAt: new Date(Date.now() - 2 * 86400000).toISOString(), // updated 2 days ago
-    status: "Sent",
-    priority: "Medium",
-    reporterName: "Operator Mike",
+    status: "Enviado",
+    priority: "Media",
+    reporterName: "Operador Miguel",
     equipmentNumber: "EQ-HYDPRESS-05",
     functionalLocation: "FL-PRESSSHOP-A3",
     assembly: "HP05-CYLINDER-MAIN",
@@ -102,13 +106,14 @@ let noticesStore: MaintenanceNoticeAPI[] = [
   },
   {
     id: "5",
-    shortText: "Conveyor Belt C-12 Slipping",
-    causeText: "Conveyor belt C-12 in packaging area shows signs of slipping under load. Needs tension adjustment and inspection of drive motor.",
+    noticeType: "M2",
+    shortText: "Banda Transportadora C-12 Deslizando",
+    causeText: "Banda transportadora C-12 en área de empaque muestra signos de deslizamiento bajo carga. Necesita ajuste de tensión e inspección del motor de accionamiento.",
     createdAt: new Date(Date.now() - 4 * 86400000).toISOString(), // 4 days ago
     updatedAt: new Date(Date.now() - 4 * 86400000).toISOString(),
-    status: "Pending",
-    priority: "High",
-    reporterName: "Operator Sarah",
+    status: "Pendiente",
+    priority: "Alta",
+    reporterName: "Operadora Sara",
     equipmentNumber: "EQ-CONV-C12",
     functionalLocation: "FL-PACKAGING-LN1",
     assembly: "C12-DRIVEUNIT",
@@ -131,45 +136,45 @@ let noticesStore: MaintenanceNoticeAPI[] = [
 let sapOrdersStore: SAPOrder[] = [
     {
         orderNumber: "ORD-001",
-        orderType: "Corrective Maintenance",
+        orderType: "Mantenimiento Correctivo",
         notificationNumber: "1", // Matches noticeStore ID
         enteredBy: "SAPUser1",
         createdOn: new Date(Date.now() - 80000000).toISOString(),
-        description: "Repair Machine A after breakdown",
-        priority: "High",
+        description: "Reparar Máquina A después de avería",
+        priority: "Alta",
         equipmentNumber: "EQ-001",
-        equipmentDescription: "Main Production Machine Alpha",
+        equipmentDescription: "Máquina Principal de Producción Alpha",
         functionalLocationLabel: "FL-A1-BAY7",
-        functionalLocationDescription: "Production Area 1, Bay 7",
+        functionalLocationDescription: "Área de Producción 1, Bahía 7",
         mainWorkCenter: "MECH-TEAM",
-        responsiblePersonName: "John Doe",
+        responsiblePersonName: "Juan Pérez",
         assembly: "ASM-MAINDRIVE-001",
-        maintenancePlant: "PLANT_X",
+        maintenancePlant: "PLANTA_X",
         plannerGroup: "PG-MECH",
-        planningPlant: "PLANT_X",
+        planningPlant: "PLANTA_X",
         workCenter: "MECH-01",
-        activityType: "REPAIR"
+        activityType: "REPARAR"
     },
     {
         orderNumber: "ORD-002",
-        orderType: "Preventive Maintenance",
+        orderType: "Mantenimiento Preventivo",
         notificationNumber: "4", // Matches noticeStore ID for leak
         enteredBy: "SAPUser2",
         createdOn: new Date(Date.now() - 70000000).toISOString(),
-        description: "Inspect and seal Hydraulic Press HP-05",
-        priority: "Medium",
+        description: "Inspeccionar y sellar Prensa Hidráulica HP-05",
+        priority: "Media",
         equipmentNumber: "EQ-HYDPRESS-05",
-        equipmentDescription: "Hydraulic Press 50 Ton",
+        equipmentDescription: "Prensa Hidráulica 50 Toneladas",
         functionalLocationLabel: "FL-PRESSSHOP-A3",
-        functionalLocationDescription: "Press Shop Area, Bay 3",
-        mainWorkCenter: "ELEC-TEAM", // Should be MECH for hydraulic
-        responsiblePersonName: "Jane Smith",
+        functionalLocationDescription: "Área Taller de Prensas, Bahía 3",
+        mainWorkCenter: "ELEC-TEAM", 
+        responsiblePersonName: "Ana Gómez",
         assembly: "HP05-CYLINDER-MAIN",
-        maintenancePlant: "PLANT_Y",
+        maintenancePlant: "PLANTA_Y",
         plannerGroup: "PG-HYD",
-        planningPlant: "PLANT_Y",
+        planningPlant: "PLANTA_Y",
         workCenter: "MECH-HYD-01",
-        activityType: "INSPECT"
+        activityType: "INSPECCIONAR"
     }
 ];
 
@@ -191,7 +196,7 @@ const generateRandomPassword = (length: number = 10): string => {
 };
 
 const UserSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters (Cedula for operators)"),
+  username: z.string().min(3, "El nombre de usuario debe tener al menos 3 caracteres (Cédula para operadores)"),
   role: z.enum(["admin", "operator"]),
   workstation: z.string().optional(),
 });
@@ -202,7 +207,7 @@ export async function loginUser(formData: FormData): Promise<{ success: boolean;
   const password = formData.get("password") as string;
 
   if (!username) {
-    return { success: false, message: "Username (Cedula) is required.", error: "Missing username" };
+    return { success: false, message: "El nombre de usuario (Cédula) es requerido.", error: "Missing username" };
   }
 
   await new Promise(resolve => setTimeout(resolve, 500));
@@ -211,21 +216,21 @@ export async function loginUser(formData: FormData): Promise<{ success: boolean;
   if (user) {
     if (user.role === "operator") {
       const { password: _, ...userWithoutPassword } = user;
-      return { success: true, message: "Login successful", user: userWithoutPassword };
+      return { success: true, message: "Inicio de sesión exitoso", user: userWithoutPassword };
     } else if (user.role === "admin") {
       if (!password) {
-        return { success: false, message: "Password is required for admin users.", error: "Missing password for admin" };
+        return { success: false, message: "La contraseña es requerida para usuarios administradores.", error: "Missing password for admin" };
       }
       if (user.password === password) {
         const { password: _, ...userWithoutPassword } = user;
-        return { success: true, message: "Login successful", user: userWithoutPassword };
+        return { success: true, message: "Inicio de sesión exitoso", user: userWithoutPassword };
       } else {
-        return { success: false, message: "Invalid password for admin.", error: "Invalid admin credentials" };
+        return { success: false, message: "Contraseña inválida para administrador.", error: "Invalid admin credentials" };
       }
     }
   }
   
-  return { success: false, message: "Invalid username or password.", error: "Invalid credentials" };
+  return { success: false, message: "Nombre de usuario o contraseña inválidos.", error: "Invalid credentials" };
 }
 
 
@@ -234,46 +239,44 @@ export async function changePassword(userId: string, newPassword: string): Promi
   const userIndex = users.findIndex(u => u.id === userId);
   if (userIndex > -1) {
     if (users[userIndex].role === 'operator') {
-      return { success: false, message: "Operators do not use passwords." };
+      return { success: false, message: "Los operadores no usan contraseñas." };
     }
     users[userIndex].password = newPassword;
     users[userIndex].forcePasswordChange = false;
-    return { success: true, message: "Password changed successfully." };
+    return { success: true, message: "Contraseña cambiada exitosamente." };
   }
-  return { success: false, message: "User not found." };
+  return { success: false, message: "Usuario no encontrado." };
 }
 
 
 export async function syncFromSAP(): Promise<{ success: boolean; message: string; synchronizedData?: string[]; firebaseLogId?: string }> {
-  console.log("Attempting to synchronize data from SAP...");
+  console.log("Intentando sincronizar datos desde SAP...");
   await new Promise(resolve => setTimeout(resolve, 2000)); 
   
-  const synchronizedTableNames = ["Customer_Data_Table", "Product_Inventory_Table", "Maintenance_Schedules_Table", "SAP_Orders_Table_Mock"];
+  const synchronizedTableNames = ["Tabla_Datos_Cliente", "Tabla_Inventario_Producto", "Tabla_Programas_Mantenimiento", "Tabla_Pedidos_SAP_Mock"];
   
   try {
     const docRef = await addDoc(collection(db, "sap_synchronized_tables"), {
       tables: synchronizedTableNames,
       synchronizedAt: serverTimestamp()
     });
-    console.log("Data synchronized with SAP. Log stored in Firebase with ID: ", docRef.id);
+    console.log("Datos sincronizados con SAP. Log almacenado en Firebase con ID: ", docRef.id);
     return { 
       success: true, 
-      message: "Data successfully synchronized from SAP and logged to Firebase.", 
+      message: "Datos sincronizados exitosamente desde SAP y registrados en Firebase.", 
       synchronizedData: synchronizedTableNames,
       firebaseLogId: docRef.id 
     };
   } catch (error) {
-    console.error("Error writing SAP sync log to Firebase: ", error);
-    // In a real app, you might want to throw the error or handle it more gracefully
+    console.error("Error al escribir el log de sincronización de SAP en Firebase: ", error);
     return { 
       success: false, 
-      message: "Data synchronized from SAP, but failed to log to Firebase.", 
+      message: "Datos sincronizados desde SAP, pero falló el registro en Firebase.", 
       synchronizedData: synchronizedTableNames 
     };
   }
 }
 
-// Returns full MaintenanceNoticeAPI objects for UI (NoticesTab) and API
 export async function getNotices(): Promise<MaintenanceNoticeAPI[]> {
   await new Promise(resolve => setTimeout(resolve, 500));
   return [...noticesStore].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -288,17 +291,16 @@ export async function getMaintenanceNoticeByIdForAPI(id: string): Promise<Mainte
 
 export async function createMaintenanceNoticeAction(data: CreateMaintenanceNoticeInput): Promise<MaintenanceNoticeAPI> {
     await new Promise(resolve => setTimeout(resolve, 500));
-    const newId = String(Date.now()); // Simple ID generation
+    const newId = String(Date.now()); 
     const now = new Date().toISOString();
     const newNotice: MaintenanceNoticeAPI = {
         ...data,
         id: newId,
-        status: "Pending", // Default status on creation
+        status: "Pendiente", 
         createdAt: now,
         updatedAt: now,
         shortText: data.shortText, 
-        // Ensure all required fields from MaintenanceNoticeAPI are present, even if optional in input
-        // Many fields are optional in schema but part of MaintenanceNoticeAPI type
+        noticeType: data.shortText.includes("Urgente") ? "M2" : "M1", // Basic logic for notice type
         equipmentNumber: data.equipmentNumber || undefined,
         functionalLocation: data.functionalLocation || undefined,
         assembly: data.assembly || undefined,
@@ -320,10 +322,10 @@ export async function createMaintenanceNoticeAction(data: CreateMaintenanceNotic
         objectPartCodeGroup: data.objectPartCodeGroup || undefined,
         objectPartCode: data.objectPartCode || undefined,
         causeText: data.causeText || undefined,
-        imageUrl: "https://placehold.co/600x400.png", // Default image
+        imageUrl: data.shortText.toLowerCase().includes("sensor") ? "https://placehold.co/600x400.png?text=Sensor+Issue" : "https://placehold.co/600x400.png",
         data_ai_hint: "new notice"
     };
-    noticesStore.unshift(newNotice); // Add to the beginning of the array
+    noticesStore.unshift(newNotice); 
     return newNotice;
 }
 
@@ -344,20 +346,18 @@ export async function updateMaintenanceNoticeAction(id: string, data: UpdateMain
 
 
 export async function sendNoticesToSAP(noticeIds: string[]): Promise<{ success: boolean; message: string }> {
-  console.log("Sending notices to SAP:", noticeIds);
+  console.log("Enviando avisos a SAP:", noticeIds);
   await new Promise(resolve => setTimeout(resolve, 1500));
 
   noticesStore = noticesStore.map(notice => {
     if (noticeIds.includes(notice.id)) {
-      // Here you would typically send the full notice object to SAP
-      // For this mock, we just update the status
-      console.log("Sending notice to SAP (mock):", notice);
-      return { ...notice, status: "Sent" as NoticeStatus, updatedAt: new Date().toISOString() };
+      console.log("Enviando aviso a SAP (mock):", notice);
+      return { ...notice, status: "Enviado" as NoticeStatus, updatedAt: new Date().toISOString() };
     }
     return notice;
   });
 
-  return { success: true, message: `${noticeIds.length} notice(s) sent to SAP successfully.` };
+  return { success: true, message: `${noticeIds.length} aviso(s) enviado(s) a SAP exitosamente.` };
 }
 
 
@@ -376,17 +376,17 @@ export async function addUser(formData: FormData): Promise<{ success: boolean; m
   const validationResult = UserSchema.safeParse(rawFormData);
 
   if (!validationResult.success) {
-    return { success: false, message: "Validation failed", errors: validationResult.error.issues };
+    return { success: false, message: "Falló la validación", errors: validationResult.error.issues };
   }
   
   const { username, role, workstation } = validationResult.data;
 
   if (users.find(user => user.username === username)) {
-    return { success: false, message: "Username (Cedula) already exists." };
+    return { success: false, message: "El nombre de usuario (Cédula) ya existe." };
   }
 
   const newUser: User = {
-    id: String(users.length + 1 + Date.now()), // More unique ID
+    id: String(users.length + 1 + Date.now()), 
     username,
     role: role as UserRole,
     forcePasswordChange: false,
@@ -400,7 +400,7 @@ export async function addUser(formData: FormData): Promise<{ success: boolean; m
     newUser.forcePasswordChange = true;
   } else if (role === "operator") {
     if (!workstation) {
-        return { success: false, message: "Workstation is required for operator role."}
+        return { success: false, message: "El puesto de trabajo es requerido para el rol de operador."}
     }
     newUser.workstation = workstation;
   }
@@ -408,7 +408,7 @@ export async function addUser(formData: FormData): Promise<{ success: boolean; m
   users.push(newUser);
   return { 
     success: true, 
-    message: `User ${username} added successfully with role ${role}.${role === 'operator' && workstation ? ` Assigned to workstation: ${workstation}.` : ''}`, 
+    message: `Usuario ${username} agregado exitosamente con rol ${role}.${role === 'operator' && workstation ? ` Asignado al puesto de trabajo: ${workstation}.` : ''}`, 
     generatedPassword: role === "admin" ? generatedPasswordForAdmin : undefined 
   };
 }
@@ -418,13 +418,13 @@ export async function deleteUser(userId: string): Promise<{ success: boolean; me
   const initialLength = users.length;
   users = users.filter(user => user.id !== userId);
   if (users.length < initialLength) {
-    return { success: true, message: "User deleted successfully." };
+    return { success: true, message: "Usuario eliminado exitosamente." };
   }
-  return { success: false, message: "User not found." };
+  return { success: false, message: "Usuario no encontrado." };
 }
 
-// Action to get SAP orders
 export async function getSAPOrdersAction(): Promise<SAPOrder[]> {
-    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate delay
+    await new Promise(resolve => setTimeout(resolve, 500)); 
     return [...sapOrdersStore].sort((a,b) => new Date(b.createdOn || 0).getTime() - new Date(a.createdOn || 0).getTime());
 }
+

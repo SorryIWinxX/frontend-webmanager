@@ -12,9 +12,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { getNotices, sendNoticesToSAP } from '@/app/actions';
-import type { MaintenanceNoticeAPI, NoticeStatus } from '@/types'; // Use MaintenanceNoticeAPI
-import { Loader2, Send, ListChecks, AlertTriangle, CheckCircle, Eye, ImageOff, ChevronLeft, ChevronRight, Briefcase, Settings, UserCircle, CalendarDays, Clock, MapPin, Hash, HelpCircle, FileText, Tag, GripVertical, Anchor } from 'lucide-react';
+import type { MaintenanceNoticeAPI, NoticeStatus } from '@/types';
+import { Loader2, Send, ListChecks, AlertTriangle, CheckCircle, Eye, ImageOff, ChevronLeft, ChevronRight, Briefcase, Settings, UserCircle, CalendarDays, Clock, MapPin, Hash, HelpCircle, FileText, Tag, GripVertical, Anchor, Info, Edit } from 'lucide-react';
 import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const ITEMS_PER_PAGE = 5;
 
@@ -23,16 +24,30 @@ interface DetailItemProps {
   label: string;
   value?: string | number | null;
   isCode?: boolean;
+  fullWidthValue?: boolean;
+  placeholder?: string;
 }
 
-const DetailItem: React.FC<DetailItemProps> = ({ icon: Icon, label, value, isCode = false }) => {
-  if (value === undefined || value === null || value === '') return null;
+const DetailItem: React.FC<DetailItemProps> = ({ icon: Icon, label, value, isCode = false, fullWidthValue = false, placeholder = "---" }) => {
+  const displayValue = (value === undefined || value === null || String(value).trim() === '') ? placeholder : String(value);
+  
+  if (fullWidthValue) {
+    return (
+      <div>
+        <h3 className="font-semibold text-md mb-1 mt-3 border-b pb-1 text-primary flex items-center">
+            <Icon className="mr-2 h-5 w-5" /> {label}
+        </h3>
+        <p className="text-muted-foreground whitespace-pre-wrap p-2 bg-secondary/30 rounded-md">{displayValue}</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex items-start space-x-2">
+    <div className="flex items-start space-x-2 py-1">
       <Icon className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
       <div>
         <span className="font-semibold text-foreground">{label}:</span>{' '}
-        {isCode ? <code className="text-sm bg-muted p-1 rounded">{String(value)}</code> : <span className="text-muted-foreground">{String(value)}</span>}
+        {isCode ? <code className="text-sm bg-muted p-1 rounded">{displayValue}</code> : <span className="text-muted-foreground">{displayValue}</span>}
       </div>
     </div>
   );
@@ -51,7 +66,7 @@ export function NoticesTab() {
   const [pendingCurrentPage, setPendingCurrentPage] = useState(1);
   const [processedCurrentPage, setProcessedCurrentPage] = useState(1);
 
-  const fetchNoticesData = () => { // Renamed to avoid conflict with getNotices import
+  const fetchNoticesData = () => {
     startLoadingNotices(async () => {
       try {
         const fetchedNotices = await getNotices();
@@ -60,8 +75,8 @@ export function NoticesTab() {
         setProcessedCurrentPage(1); 
       } catch (e) {
         toast({
-          title: "Error fetching notices",
-          description: e instanceof Error ? e.message : "An unknown error occurred.",
+          title: "Error al cargar avisos",
+          description: e instanceof Error ? e.message : "Ocurrió un error desconocido.",
           variant: "destructive",
         });
       }
@@ -78,8 +93,8 @@ export function NoticesTab() {
     );
   };
 
-  const pendingNotices = notices.filter(n => n.status === "Pending");
-  const sentNotices = notices.filter(n => n.status !== "Pending"); // includes "Sent" and "Failed"
+  const pendingNotices = notices.filter(n => n.status === "Pendiente");
+  const sentNotices = notices.filter(n => n.status !== "Pendiente"); // includes "Enviado" and "Fallido"
 
   const handleSelectAllPending = (checked: boolean | "indeterminate") => {
     if (checked === true) {
@@ -94,16 +109,12 @@ export function NoticesTab() {
     pendingCurrentPage * ITEMS_PER_PAGE
   );
   
-  const areAllVisiblePendingSelected = currentVisiblePendingNotices.length > 0 && currentVisiblePendingNotices.every(n => selectedNotices.includes(n.id));
-  const isAnyVisiblePendingSelected = currentVisiblePendingNotices.some(n => selectedNotices.includes(n.id));
-
-
   const handleSendToSAP = () => {
     const noticesToSend = selectedNotices.filter(id => pendingNotices.some(pn => pn.id === id));
     if (noticesToSend.length === 0) {
       toast({
-        title: "No pending notices selected",
-        description: "Please select at least one pending notice to send.",
+        title: "No hay avisos pendientes seleccionados",
+        description: "Por favor, seleccione al menos un aviso pendiente para enviar.",
         variant: "destructive",
       });
       return;
@@ -113,7 +124,7 @@ export function NoticesTab() {
       try {
         const result = await sendNoticesToSAP(noticesToSend);
         toast({
-          title: result.success ? "Notices Sent" : "Sending Failed",
+          title: result.success ? "Avisos Enviados" : "Envío Fallido",
           description: result.message,
           variant: result.success ? "default" : "destructive",
         });
@@ -123,22 +134,22 @@ export function NoticesTab() {
         }
       } catch (e) {
         toast({
-          title: "Error sending notices",
-          description: e instanceof Error ? e.message : "An unknown error occurred.",
+          title: "Error al enviar avisos",
+          description: e instanceof Error ? e.message : "Ocurrió un error desconocido.",
           variant: "destructive",
         });
       }
     });
   };
 
-  const getStatusBadgeVariant = (status: NoticeStatus) => {
+  const getStatusBadgeVariant = (status: NoticeStatus): "destructive" | "default" | "outline" | "secondary" => {
     switch (status) {
-      case "Pending":
+      case "Pendiente":
         return "destructive"; 
-      case "Sent":
+      case "Enviado":
         return "default"; 
-      case "Failed":
-        return "outline"; // or another variant for failed
+      case "Fallido":
+        return "outline"; 
       default:
         return "secondary";
     }
@@ -147,6 +158,24 @@ export function NoticesTab() {
   const openDetailDialog = (notice: MaintenanceNoticeAPI) => {
     setSelectedNoticeDetail(notice);
     setIsDetailDialogOpen(true);
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'dd/mm/aaaa';
+    try {
+      return format(new Date(dateString), 'dd/MM/yyyy', { locale: es });
+    } catch {
+      return 'Fecha inválida';
+    }
+  };
+  
+  const formatTime = (timeString?: string) => {
+    if (!timeString) return '---';
+    // Basic HH:MM check, can be improved
+    if (/^([01]\d|2[0-3]):([0-5]\d)$/.test(timeString)) {
+        return timeString;
+    }
+    return '---';
   };
 
   const renderNoticeTable = (
@@ -183,17 +212,17 @@ export function NoticesTab() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoadingNotices && totalItems === 0 ? ( // Show loader only if table is empty during load
+          {isLoadingNotices && totalItems === 0 ? (
              <div className="flex justify-center items-center h-40">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : totalItems === 0 ? (
             <div className="text-center py-6">
-              <p className="text-lg text-muted-foreground">No {isPendingTable ? 'pending' : 'processed'} notices found.</p>
+              <p className="text-lg text-muted-foreground">No se encontraron avisos {isPendingTable ? 'pendientes' : 'procesados'}.</p>
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto border">
+              <ScrollArea className="whitespace-nowrap">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -202,19 +231,19 @@ export function NoticesTab() {
                           <Checkbox 
                             checked={isAllCurrentPageSelected || (isIndeterminateCurrentPage ? "indeterminate" : false)}
                             onCheckedChange={handleSelectAllForCurrentPage}
-                            aria-label="Select all notices on current page"
+                            aria-label="Seleccionar todos los avisos en la página actual"
                             disabled={paginatedData.length === 0}
                           />
                         </TableHead>
                       )}
-                      <TableHead className="w-[80px]">Image</TableHead>
-                      <TableHead>Short Text</TableHead>
-                      <TableHead className="hidden lg:table-cell">Equipment No.</TableHead>
-                      <TableHead className="hidden md:table-cell">Func. Location</TableHead>
-                      <TableHead className="hidden sm:table-cell">Priority</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="hidden md:table-cell">Created At</TableHead>
-                      <TableHead className="text-right">Details</TableHead>
+                      <TableHead className="w-[80px]">Imagen</TableHead>
+                      <TableHead>Texto Corto</TableHead>
+                      <TableHead className="hidden lg:table-cell">Nº Equipo</TableHead>
+                      <TableHead className="hidden md:table-cell">Ubic. Técnica</TableHead>
+                      <TableHead className="hidden sm:table-cell">Prioridad</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead className="hidden md:table-cell">Creado el</TableHead>
+                      <TableHead className="text-right">Detalles</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -237,7 +266,7 @@ export function NoticesTab() {
                               width={60} 
                               height={40} 
                               className="rounded object-cover" 
-                              data-ai-hint={notice.data_ai_hint || "maintenance"}
+                              data-ai-hint={notice.data_ai_hint || "mantenimiento"}
                             />
                           ) : (
                             <div className="w-[60px] h-[40px] bg-muted rounded flex items-center justify-center">
@@ -254,7 +283,7 @@ export function NoticesTab() {
                             {notice.status}
                           </Badge>
                         </TableCell>
-                        <TableCell className="hidden md:table-cell">{format(new Date(notice.createdAt), "PP")}</TableCell>
+                        <TableCell className="hidden md:table-cell">{format(new Date(notice.createdAt), "PP", { locale: es })}</TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="icon" onClick={() => openDetailDialog(notice)}>
                             <Eye className="h-5 w-5" />
@@ -264,11 +293,11 @@ export function NoticesTab() {
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+              </ScrollArea>
               {totalPages > 1 && (
                 <div className="flex items-center justify-end space-x-2 py-4">
                   <span className="text-sm text-muted-foreground">
-                    Page {currentPage} of {totalPages}
+                    Página {currentPage} de {totalPages}
                   </span>
                   <Button
                     variant="outline"
@@ -277,7 +306,7 @@ export function NoticesTab() {
                     disabled={currentPage === 1}
                   >
                     <ChevronLeft className="h-4 w-4 mr-1" />
-                    Previous
+                    Anterior
                   </Button>
                   <Button
                     variant="outline"
@@ -285,7 +314,7 @@ export function NoticesTab() {
                     onClick={() => setCurrentPage(currentPage + 1)}
                     disabled={currentPage === totalPages}
                   >
-                    Next
+                    Siguiente
                     <ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
                 </div>
@@ -341,19 +370,19 @@ export function NoticesTab() {
             </div>
           ) : (
             <Fragment>
-              {renderNoticeTable("Pending Notices", pendingNotices, true, pendingCurrentPage, setPendingCurrentPage, pendingNotices.length)}
-              {renderNoticeTable("Processed Notices", sentNotices, false, processedCurrentPage, setProcessedCurrentPage, sentNotices.length)}
+              {renderNoticeTable("Avisos Pendientes", pendingNotices, true, pendingCurrentPage, setPendingCurrentPage, pendingNotices.length)}
+              {renderNoticeTable("Avisos Procesados", sentNotices, false, processedCurrentPage, setProcessedCurrentPage, sentNotices.length)}
               {notices.length > 0 && pendingNotices.length === 0 && !isLoadingNotices && (
                 <div className="mt-6 p-4 bg-green-500/10 text-green-700 border border-green-500/20 rounded-md text-center">
                     <CheckCircle className="inline-block mr-2 h-5 w-5" />
-                    No hay avisos pendientes de revision.
+                    No hay avisos pendientes de revisión.
                 </div>
                )}
                {notices.length === 0 && !isLoadingNotices && (
                  <div className="text-center py-10 col-span-1 sm:col-span-2">
                     <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                    <p className="text-xl text-muted-foreground">Ningun aviso encontrado.</p>
-                    <p className="text-sm text-muted-foreground">Check back later or try synchronizing data if notices are expected.</p>
+                    <p className="text-xl text-muted-foreground">No se encontraron avisos.</p>
+                    <p className="text-sm text-muted-foreground">Vuelva más tarde o intente sincronizar datos si se esperan avisos.</p>
                   </div>
                )}
             </Fragment>
@@ -366,12 +395,15 @@ export function NoticesTab() {
             <DialogHeader>
               <DialogTitle className="text-2xl">{selectedNoticeDetail.shortText}</DialogTitle>
               <DialogDescription className="flex items-center gap-2">
-                Status: <Badge variant={getStatusBadgeVariant(selectedNoticeDetail.status)}>{selectedNoticeDetail.status}</Badge> | 
-                Created: {format(new Date(selectedNoticeDetail.createdAt), "PPp")}
+                Estado: <Badge variant={getStatusBadgeVariant(selectedNoticeDetail.status)}>{selectedNoticeDetail.status}</Badge> | 
+                Creado: {format(new Date(selectedNoticeDetail.createdAt), "PPp", { locale: es })}
               </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[60vh] p-1 pr-4">
-              <div className="grid gap-y-3 py-4">
+              <div className="grid gap-y-1 py-4">
+
+                <h3 className="font-semibold text-lg mb-2 border-b pb-1 text-primary">Información Básica</h3>
+                
                 {selectedNoticeDetail.imageUrl && (
                   <div className="relative w-full h-64 md:h-80 rounded-md overflow-hidden border my-2">
                     <Image 
@@ -379,55 +411,51 @@ export function NoticesTab() {
                         alt={selectedNoticeDetail.shortText} 
                         fill
                         style={{objectFit: "contain"}}
-                        data-ai-hint={selectedNoticeDetail.data_ai_hint || "maintenance detail"}
+                        data-ai-hint={selectedNoticeDetail.data_ai_hint || "detalle mantenimiento"}
                     />
                   </div>
                 )}
                 
-                <h3 className="font-semibold text-lg mb-1 border-b pb-1 text-primary">General Information</h3>
-                <DetailItem icon={Hash} label="Notice ID" value={selectedNoticeDetail.id} isCode />
-                <DetailItem icon={Settings} label="Equipment Number" value={selectedNoticeDetail.equipmentNumber} isCode />
-                <DetailItem icon={MapPin} label="Functional Location" value={selectedNoticeDetail.functionalLocation} isCode />
-                <DetailItem icon={Anchor} label="Assembly" value={selectedNoticeDetail.assembly} isCode />
-                <DetailItem icon={AlertTriangle} label="Priority" value={selectedNoticeDetail.priority} />
-                <DetailItem icon={UserCircle} label="Reporter Name" value={selectedNoticeDetail.reporterName} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    <div><span className="font-semibold">Tipo de Aviso:</span> <span className="text-muted-foreground">{selectedNoticeDetail.noticeType || "M1"}</span></div>
+                    <div><span className="font-semibold">Equipo:</span> <span className="text-muted-foreground">{selectedNoticeDetail.equipmentNumber || "(vacío)"}</span></div>
+                    <div><span className="font-semibold">Ubicación Técnica:</span> <span className="text-muted-foreground">{selectedNoticeDetail.functionalLocation || "(vacío)"}</span></div>
+                    <div><span className="font-semibold">Fecha Inicio:</span> <span className="text-muted-foreground">{formatDate(selectedNoticeDetail.requiredStartDate)}</span></div>
+                    <div><span className="font-semibold">Hora Inicio:</span> <span className="text-muted-foreground">{formatTime(selectedNoticeDetail.requiredStartTime)}</span></div>
+                    <div><span className="font-semibold">Fecha Fin:</span> <span className="text-muted-foreground">{formatDate(selectedNoticeDetail.requiredEndDate)}</span></div>
+                    <div><span className="font-semibold">Hora Fin:</span> <span className="text-muted-foreground">{formatTime(selectedNoticeDetail.requiredEndTime)}</span></div>
+                    <div><span className="font-semibold">Puesto de Trabajo:</span> <span className="text-muted-foreground">{selectedNoticeDetail.workCenterObjectId || "(vacío)"}</span></div>
+                    <div><span className="font-semibold">Reportado por:</span> <span className="text-muted-foreground">{selectedNoticeDetail.reporterName || "---"}</span></div>
+                    <div><span className="font-semibold">Punto de Inicio:</span> <span className="text-muted-foreground">{selectedNoticeDetail.startPoint || "(vacío)"}</span></div>
+                    <div><span className="font-semibold">Punto de Fin:</span> <span className="text-muted-foreground">{selectedNoticeDetail.endPoint || "(vacío)"}</span></div>
+                </div>
                 
-                <h3 className="font-semibold text-lg mb-1 mt-3 border-b pb-1 text-primary">Date & Time</h3>
-                <DetailItem icon={CalendarDays} label="Required Start Date" value={selectedNoticeDetail.requiredStartDate ? format(new Date(selectedNoticeDetail.requiredStartDate), 'PPP') : 'N/A'} />
-                <DetailItem icon={Clock} label="Required Start Time" value={selectedNoticeDetail.requiredStartTime} />
-                <DetailItem icon={CalendarDays} label="Required End Date" value={selectedNoticeDetail.requiredEndDate ? format(new Date(selectedNoticeDetail.requiredEndDate), 'PPP') : 'N/A'} />
-                <DetailItem icon={Clock} label="Required End Time" value={selectedNoticeDetail.requiredEndTime} />
-                <DetailItem icon={CalendarDays} label="Malfunction End Date" value={selectedNoticeDetail.malfunctionEndDate ? format(new Date(selectedNoticeDetail.malfunctionEndDate), 'PPP') : 'N/A'} />
-                <DetailItem icon={Clock} label="Malfunction End Time" value={selectedNoticeDetail.malfunctionEndTime} />
-                <DetailItem icon={Briefcase} label="Work Center Object ID" value={selectedNoticeDetail.workCenterObjectId} isCode />
-
-                <h3 className="font-semibold text-lg mb-1 mt-3 border-b pb-1 text-primary">Linear Data</h3>
-                <DetailItem icon={MapPin} label="Start Point" value={selectedNoticeDetail.startPoint} />
-                <DetailItem icon={MapPin} label="End Point" value={selectedNoticeDetail.endPoint} />
-                <DetailItem icon={GripVertical} label="Length" value={selectedNoticeDetail.length} />
-                <DetailItem icon={Tag} label="Linear Unit" value={selectedNoticeDetail.linearUnit} />
+                <DetailItem icon={Hash} label="ID Aviso" value={selectedNoticeDetail.id} isCode placeholder="N/A"/>
                 
-                <h3 className="font-semibold text-lg mb-1 mt-3 border-b pb-1 text-primary">Problem Details</h3>
-                <DetailItem icon={HelpCircle} label="Problem Code Group" value={selectedNoticeDetail.problemCodeGroup} isCode />
-                <DetailItem icon={HelpCircle} label="Problem Code" value={selectedNoticeDetail.problemCode} isCode />
-                <DetailItem icon={Settings} label="Object Part Code Group" value={selectedNoticeDetail.objectPartCodeGroup} isCode />
-                <DetailItem icon={Settings} label="Object Part Code" value={selectedNoticeDetail.objectPartCode} isCode />
+                <h3 className="font-semibold text-lg mb-1 mt-4 border-b pb-1 text-primary">Información Adicional</h3>
+                <DetailItem icon={Info} label="Prioridad" value={selectedNoticeDetail.priority} placeholder="N/A" />
+                <DetailItem icon={Anchor} label="Conjunto" value={selectedNoticeDetail.assembly} isCode placeholder="N/A" />
+                <DetailItem icon={CalendarDays} label="Fin Avería (Fecha)" value={selectedNoticeDetail.malfunctionEndDate ? formatDate(selectedNoticeDetail.malfunctionEndDate) : undefined} placeholder="dd/mm/aaaa"/>
+                <DetailItem icon={Clock} label="Fin Avería (Hora)" value={selectedNoticeDetail.malfunctionEndTime ? formatTime(selectedNoticeDetail.malfunctionEndTime) : undefined} placeholder="---"/>
                 
-                {selectedNoticeDetail.causeText && (
-                  <div>
-                    <h3 className="font-semibold text-lg mb-1 mt-3 border-b pb-1 text-primary flex items-center">
-                        <FileText className="mr-2 h-5 w-5" /> Cause Text
-                    </h3>
-                    <p className="text-muted-foreground whitespace-pre-wrap p-2 bg-secondary/30 rounded-md">{selectedNoticeDetail.causeText}</p>
-                  </div>
-                )}
+                <h3 className="font-semibold text-lg mb-1 mt-3 border-b pb-1 text-primary">Datos Lineales</h3>
+                <DetailItem icon={GripVertical} label="Longitud" value={selectedNoticeDetail.length} placeholder="---" />
+                <DetailItem icon={Tag} label="Unidad Lineal" value={selectedNoticeDetail.linearUnit} placeholder="---" />
                 
-                <DetailItem icon={CalendarDays} label="Last Updated" value={selectedNoticeDetail.updatedAt ? format(new Date(selectedNoticeDetail.updatedAt), 'PPpp') : 'N/A'} />
+                <h3 className="font-semibold text-lg mb-1 mt-3 border-b pb-1 text-primary">Detalles del Problema</h3>
+                <DetailItem icon={HelpCircle} label="Grupo Cód. Problema" value={selectedNoticeDetail.problemCodeGroup} isCode placeholder="N/A" />
+                <DetailItem icon={HelpCircle} label="Código Problema" value={selectedNoticeDetail.problemCode} isCode placeholder="N/A" />
+                <DetailItem icon={Settings} label="Grupo Cód. Objeto" value={selectedNoticeDetail.objectPartCodeGroup} isCode placeholder="N/A" />
+                <DetailItem icon={Edit} label="Código Parte Objeto" value={selectedNoticeDetail.objectPartCode} isCode placeholder="N/A" />
+                
+                <DetailItem icon={FileText} label="Texto de Causa" value={selectedNoticeDetail.causeText} fullWidthValue placeholder="Sin texto de causa." />
+                
+                <DetailItem icon={CalendarDays} label="Última Actualización" value={selectedNoticeDetail.updatedAt ? format(new Date(selectedNoticeDetail.updatedAt), 'PPpp', { locale: es }) : 'N/A'} />
 
               </div>
             </ScrollArea>
             <CardFooter className="pt-4">
-                <Button onClick={() => setIsDetailDialogOpen(false)} variant="outline" className="w-full">Close</Button>
+                <Button onClick={() => setIsDetailDialogOpen(false)} variant="outline" className="w-full">Cerrar</Button>
             </CardFooter>
           </DialogContent>
         </Dialog>
@@ -435,3 +463,4 @@ export function NoticesTab() {
     </div>
   );
 }
+

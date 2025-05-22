@@ -1,9 +1,10 @@
 
-export type NoticeStatus = "Pending" | "Sent" | "Failed";
+export type NoticeStatus = "Pendiente" | "Enviado" | "Fallido";
 
 // Detailed interface for Maintenance Notices used by the API and stored internally
 export interface MaintenanceNoticeAPI {
   id: string;
+  noticeType?: string; // e.g., "M1" (Maintenance Request), "M2" (Malfunction Report)
   equipmentNumber?: string;
   functionalLocation?: string;
   assembly?: string;
@@ -33,8 +34,6 @@ export interface MaintenanceNoticeAPI {
 
   imageUrl?: string; 
   data_ai_hint?: string; // For placeholder image generation
-  // detailedInfo might be redundant if all fields are displayed, or could be a summary.
-  // For now, we will rely on displaying individual fields.
 }
 
 export type UserRole = "admin" | "operator";
@@ -77,3 +76,4 @@ export interface SAPOrder {
   length?: number;
   linearUnit?: string; // Unit of Measurement for Linear Data
 }
+
