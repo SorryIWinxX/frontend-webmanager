@@ -29,12 +29,6 @@ let noticesStore: MaintenanceNoticeAPI[] = [
     data_ai_hint: "motor industrial",
     noticeType: "M1",
     reporterName: "Operador Planta",
-    startPoint: "Sección A",
-    endPoint: "Sección B",
-    linearLength: 10,
-    linearUnit: "MTS",
-    endMalfunctionDate: new Date(Date.now() - 86400000 * 2).toISOString(),
-    endMalfunctionTime: new Date(Date.now() - 86400000 * 2).toISOString(),
   },
   {
     id: "2",
@@ -121,105 +115,78 @@ let sapOrdersStore: SAPOrder[] = [
     }
 ];
 
-// User data is now managed by an external API.
-// const users: User[] = [ ... ]; // This local array is removed.
+let users: User[] = [
+  { id: "1", username: "admin", role: "admin", password: "123", forcePasswordChange: false },
+  { id: "2", username: "op123", role: "operator", workstation: "Línea de Ensamblaje 1", forcePasswordChange: false, password: "" }, // Operators don't use password field for login
+  { id: "3", username: "newadmin", role: "admin", password: "changeme", forcePasswordChange: true },
+];
+
 
 const UserFormValidationSchema = z.object({
   username: z.string().min(3, "El nombre de usuario debe tener al menos 3 caracteres (Cédula para operadores)"),
   role: z.enum(["admin", "operator"]),
   workstation: z.string().optional(),
-  password: z.string().optional(), // For admin creation, actual password comes from external API or is set there
+  password: z.string().optional(),
 });
 
 
 export async function loginUser(formData: FormData): Promise<{ success: boolean; message: string; user?: User; error?: string }> {
   const username = formData.get("username") as string;
-  const password = formData.get("password") as string; // Password for admin, not for operator
+  const password = formData.get("password") as string;
 
   if (!username) {
     return { success: false, message: "El nombre de usuario (Cédula) es requerido.", error: "Missing username" };
   }
-  
-  const externalApiUrl = process.env.EXTERNAL_API_BASE_URL;
-  if (!externalApiUrl) {
-    console.error("Error: EXTERNAL_API_BASE_URL no está configurada.");
-    return { success: false, message: "Error de configuración del servidor.", error: "API URL missing" };
+
+  const user = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+
+  if (!user) {
+    return { success: false, message: "Usuario no encontrado.", error: "User not found" };
   }
 
-  try {
-    // For operators, password might not be sent or might be ignored by the API
-    // For admins, password is required.
-    // The external API should handle the logic of whether password is required based on role or a pre-check.
-    const payload: any = { username };
-    // Only send password if it's provided (intended for admin login)
-    if (password) {
-        payload.password = password;
+  if (user.role === "admin") {
+    if (!password) {
+      return { success: false, message: "La contraseña es requerida para administradores.", error: "Missing password for admin" };
     }
-
-
-    const response = await fetch(`${externalApiUrl}/auth/login`, { // Assuming a /auth/login endpoint
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: "Credenciales inválidas o error de API." }));
-      return { success: false, message: errorData.message || "Credenciales inválidas o error de API.", error: `API Error: ${response.status}` };
+    if (user.password !== password) {
+      return { success: false, message: "Contraseña incorrecta para administrador.", error: "Invalid admin password" };
     }
-
-    const userFromApi: User = await response.json();
-
-    // Ensure the user object from API matches our User type, especially `forcePasswordChange`
-    // The external API should return a user object compatible with the User type.
-    return { success: true, message: "Inicio de sesión exitoso", user: userFromApi };
-
-  } catch (error) {
-    console.error("Error en loginUser:", error);
-    return { success: false, message: "Error de conexión o del servidor al intentar iniciar sesión.", error: error instanceof Error ? error.message : "Unknown error" };
   }
+  // For operators, only username (cédula) is checked.
+
+  // Return a copy of the user object without the password for security, even in mocks
+  const { password: _, ...userToReturn } = user;
+  return { success: true, message: "Inicio de sesión exitoso", user: userToReturn };
 }
 
 
 export async function changePassword(userId: string, newPassword: string): Promise<{ success: boolean; message: string }> {
-  const externalApiUrl = process.env.EXTERNAL_API_BASE_URL;
-  if (!externalApiUrl) {
-    console.error("Error: EXTERNAL_API_BASE_URL no está configurada.");
-    return { success: false, message: "Error de configuración del servidor." };
+  const userIndex = users.findIndex(u => u.id === userId);
+  if (userIndex === -1) {
+    return { success: false, message: "Usuario no encontrado." };
+  }
+  if (users[userIndex].role !== 'admin') {
+      return { success: false, message: "Solo los administradores pueden cambiar la contraseña de esta manera." };
   }
 
-  try {
-    const response = await fetch(`${externalApiUrl}/users/${userId}/change-password`, { // Assuming this endpoint
-      method: 'POST', // Or PUT
-      headers: { 'Content-Type': 'application/json' /* Add Auth headers if needed */ },
-      body: JSON.stringify({ newPassword }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: "No se pudo cambiar la contraseña." }));
-      return { success: false, message: errorData.message || "No se pudo cambiar la contraseña." };
-    }
-    // Assuming API returns a success message or status
-    return { success: true, message: "Contraseña cambiada exitosamente." };
-
-  } catch (error) {
-    console.error("Error en changePassword:", error);
-    return { success: false, message: "Error de conexión o del servidor al cambiar la contraseña." };
-  }
+  users[userIndex].password = newPassword;
+  users[userIndex].forcePasswordChange = false;
+  
+  return { success: true, message: "Contraseña cambiada exitosamente." };
 }
 
 
 export async function syncFromSAP(): Promise<{ success: boolean; message: string; synchronizedData?: string[]; firebaseLogId?: string }> {
-  const externalSapApiUrl = process.env.EXTERNAL_API_BASE_URL; // Assuming SAP data comes from the same base URL or another specific one
-  if (!externalSapApiUrl) {
-    console.error("Error: EXTERNAL_API_BASE_URL para SAP no está configurada.");
-    return { success: false, message: "Configuración de API externa para SAP incompleta." };
-  }
+  const externalSapApiUrl = process.env.EXTERNAL_API_BASE_URL; 
+  // if (!externalSapApiUrl) {
+  //   console.error("Error: EXTERNAL_API_BASE_URL para SAP no está configurada.");
+  //   return { success: false, message: "Configuración de API externa para SAP incompleta." };
+  // }
+  // console.log(`Intentando sincronizar datos desde SAP usando la URL base: ${externalSapApiUrl}`);
+  console.log("Simulando sincronización desde SAP (usando datos mock/internos).");
 
-  console.log(`Intentando sincronizar datos desde SAP usando la URL base: ${externalSapApiUrl}`);
-  // Example: const response = await fetch(`${externalSapApiUrl}/sap-data-endpoint`);
 
-  await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
+  await new Promise(resolve => setTimeout(resolve, 2000)); 
 
   const synchronizedTableNames = ["Tabla_Datos_Cliente_SAP", "Tabla_Inventario_Producto_SAP", "Tabla_Programas_Mantenimiento_SAP", "Tabla_Pedidos_SAP_Mock"];
 
@@ -227,7 +194,7 @@ export async function syncFromSAP(): Promise<{ success: boolean; message: string
     const docRef = await addDoc(collection(db, "sap_synchronized_tables"), {
       tables: synchronizedTableNames,
       synchronizedAt: serverTimestamp(),
-      source: externalSapApiUrl // Log the source for reference
+      source: externalSapApiUrl || "Mocked SAP Data"
     });
     console.log("Datos sincronizados con SAP. Log almacenado en Firebase con ID: ", docRef.id);
     return {
@@ -236,13 +203,12 @@ export async function syncFromSAP(): Promise<{ success: boolean; message: string
       synchronizedData: synchronizedTableNames,
       firebaseLogId: docRef.id
     };
-  } catch (error)
- {
+  } catch (error) {
     console.error("Error al escribir el log de sincronización de SAP en Firebase: ", error);
     return {
       success: false,
       message: "Datos sincronizados desde SAP, pero falló el registro en Firebase.",
-      synchronizedData: synchronizedTableNames // Still return data if sync itself was ok
+      synchronizedData: synchronizedTableNames 
     };
   }
 }
@@ -262,7 +228,7 @@ export async function getMaintenanceNoticeByIdForAPI(id: string): Promise<Mainte
 
 export async function createMaintenanceNoticeAction(data: CreateMaintenanceNoticeInput): Promise<MaintenanceNoticeAPI> {
     await new Promise(resolve => setTimeout(resolve, 500));
-    const newId = String(Date.now() + Math.random()); // Ensure more unique ID for mocks
+    const newId = String(Date.now() + Math.random()); 
     const now = new Date().toISOString();
 
     const newNotice: MaintenanceNoticeAPI = {
@@ -271,12 +237,12 @@ export async function createMaintenanceNoticeAction(data: CreateMaintenanceNotic
         status: "Pendiente",
         createdAt: now,
         updatedAt: now,
-        imageUrl: data.imageUrl || undefined, // Keep it undefined if not provided
+        imageUrl: data.imageUrl || undefined,
         data_ai_hint: data.data_ai_hint || undefined,
-        noticeType: data.noticeType || "M1", // Default noticeType
+        noticeType: data.noticeType || "M1", 
         reporterName: data.reporterName || "Sistema",
     };
-    noticesStore.unshift(newNotice); // Add to the beginning
+    noticesStore.unshift(newNotice); 
     return {...newNotice};
 }
 
@@ -297,14 +263,13 @@ export async function updateMaintenanceNoticeAction(id: string, data: UpdateMain
 
 
 export async function sendNoticesToSAP(noticeIds: string[]): Promise<{ success: boolean; message: string }> {
-  const externalSapApiUrl = process.env.EXTERNAL_API_BASE_URL;
-  if (!externalSapApiUrl) {
-    console.error("Error: EXTERNAL_API_BASE_URL para SAP no está configurada.");
-    return { success: false, message: "Configuración de API externa para SAP incompleta." };
-  }
+  // const externalSapApiUrl = process.env.EXTERNAL_API_BASE_URL;
+  // if (!externalSapApiUrl) {
+  //   console.error("Error: EXTERNAL_API_BASE_URL para SAP no está configurada.");
+  //   return { success: false, message: "Configuración de API externa para SAP incompleta." };
+  // }
 
-  console.log("Enviando avisos a SAP (simulado):", noticeIds);
-  // In a real scenario, you would loop through noticeIds, fetch each notice, format it, and send to `${externalSapApiUrl}/sap-notices-endpoint`
+  console.log("Enviando avisos a SAP (simulado con mock data):", noticeIds);
   
   await new Promise(resolve => setTimeout(resolve, 1500));
 
@@ -326,28 +291,12 @@ export async function sendNoticesToSAP(noticeIds: string[]): Promise<{ success: 
 
 
 export async function getUsers(): Promise<User[]> {
-  const externalApiUrl = process.env.EXTERNAL_API_BASE_URL;
-  if (!externalApiUrl) {
-    console.error("Error: EXTERNAL_API_BASE_URL no está configurada.");
-    return []; // Or throw an error
-  }
-
-  try {
-    const response = await fetch(`${externalApiUrl}/users`, { // Assuming GET /users endpoint
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' /* Add Auth headers if needed */ },
-    });
-
-    if (!response.ok) {
-      console.error(`Error al obtener usuarios de API externa: ${response.status}`);
-      return [];
-    }
-    const usersFromApi: User[] = await response.json();
-    return usersFromApi;
-  } catch (error) {
-    console.error("Error en getUsers:", error);
-    return [];
-  }
+  await new Promise(resolve => setTimeout(resolve, 100)); // Simulate async
+  // Return copies of user objects without passwords for security
+  return users.map(u => {
+    const { password, ...userWithoutPassword } = u;
+    return userWithoutPassword;
+  });
 }
 
 export async function addUser(formData: FormData): Promise<{ success: boolean; message: string; errors?: z.ZodIssue[]; user?: User }> {
@@ -355,7 +304,7 @@ export async function addUser(formData: FormData): Promise<{ success: boolean; m
     username: formData.get('username') as string,
     role: formData.get('role') as UserRole,
     workstation: formData.get('workstation') as string | undefined,
-    password: formData.get('password') as string | undefined, // For admin creation by external API
+    password: formData.get('password') as string | undefined,
   };
 
   const validationResult = UserFormValidationSchema.safeParse(rawFormData);
@@ -366,83 +315,59 @@ export async function addUser(formData: FormData): Promise<{ success: boolean; m
 
   const { username, role, workstation, password } = validationResult.data;
 
-  const externalApiUrl = process.env.EXTERNAL_API_BASE_URL;
-  if (!externalApiUrl) {
-    console.error("Error: EXTERNAL_API_BASE_URL no está configurada.");
-    return { success: false, message: "Error de configuración del servidor." };
+  if (users.find(u => u.username.toLowerCase() === username.toLowerCase())) {
+    return { success: false, message: `El usuario "${username}" ya existe.` };
   }
-
-  const payload: any = { username, role };
-  if (role === "operator" && workstation) {
-    payload.workstation = workstation;
-  } else if (role === "admin" && password) { 
-    // The external API should handle if it needs a password for admin creation,
-    // or if it generates one. This client sends what's provided.
-    payload.password = password; 
-  }
-   if (role === "operator" && !workstation) {
+  
+  if (role === "operator" && !workstation) {
        return { success: false, message: "El puesto de trabajo es requerido para el rol de operador." };
-   }
-
-
-  try {
-    const response = await fetch(`${externalApiUrl}/users`, { // Assuming POST /users endpoint
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' /* Add Auth headers if needed */ },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: "No se pudo agregar el usuario." }));
-      return { success: false, message: errorData.message || "No se pudo agregar el usuario." };
-    }
-    
-    const newUserFromApi: User = await response.json();
-    // The API should return the created user, including any server-generated fields like id, forcePasswordChange
-    return {
-      success: true,
-      message: `Usuario ${newUserFromApi.username} agregado exitosamente.`,
-      user: newUserFromApi // Return the user object from the API
-    };
-
-  } catch (error) {
-    console.error("Error en addUser:", error);
-    return { success: false, message: "Error de conexión o del servidor al agregar usuario." };
   }
+
+
+  const newUser: User = {
+    id: String(Date.now() + Math.random()), // Simple unique ID for mock
+    username,
+    role,
+    forcePasswordChange: role === "admin" ? !!password : false, // Admins created with password must change it
+    password: role === "admin" ? (password || "password123") : "", // Store password for admin, empty for operator
+  };
+  if (role === "operator" && workstation) {
+    newUser.workstation = workstation;
+  }
+  
+  users.push(newUser);
+  
+  const { password: _, ...userToReturn } = newUser; // Don't return password
+  
+  let message = `Usuario ${username} agregado exitosamente.`;
+  if (role === "admin" && newUser.forcePasswordChange) {
+      message += ` El administrador deberá cambiar su contraseña ("${newUser.password}") al iniciar sesión.`;
+  }
+
+
+  return {
+    success: true,
+    message: message,
+    user: userToReturn
+  };
 }
 
 
 export async function deleteUser(userId: string): Promise<{ success: boolean; message: string }> {
-  const externalApiUrl = process.env.EXTERNAL_API_BASE_URL;
-  if (!externalApiUrl) {
-    console.error("Error: EXTERNAL_API_BASE_URL no está configurada.");
-    return { success: false, message: "Error de configuración del servidor." };
+  const userIndex = users.findIndex(u => u.id === userId);
+  if (userIndex === -1) {
+    return { success: false, message: "Usuario no encontrado." };
   }
-  if (userId === '1' || userId.toLowerCase() === 'admin') { // Basic protection for a default admin
+  // Basic protection for the primary admin in mock
+  if (users[userIndex].username.toLowerCase() === 'admin' && users[userIndex].id === '1') { 
       return { success: false, message: "No se puede eliminar el usuario administrador principal (simulado)." };
   }
 
-  try {
-    const response = await fetch(`${externalApiUrl}/users/${userId}`, { // Assuming DELETE /users/{id} endpoint
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' /* Add Auth headers if needed */ },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: "No se pudo eliminar el usuario." }));
-      return { success: false, message: errorData.message || "No se pudo eliminar el usuario." };
-    }
-    // Assuming API returns a 200/204 on successful deletion
-    return { success: true, message: "Usuario eliminado exitosamente." };
-
-  } catch (error) {
-    console.error("Error en deleteUser:", error);
-    return { success: false, message: "Error de conexión o del servidor al eliminar usuario." };
-  }
+  users.splice(userIndex, 1);
+  return { success: true, message: "Usuario eliminado exitosamente." };
 }
 
 export async function getSAPOrdersAction(): Promise<SAPOrder[]> {
-    // This could also fetch from an external API if SAP orders are exposed there
     await new Promise(resolve => setTimeout(resolve, 500));
     return [...sapOrdersStore].sort((a,b) => new Date(b.createdOn || 0).getTime() - new Date(a.createdOn || 0).getTime());
 }

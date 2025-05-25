@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/hooks/use-toast';
 import { getUsers, addUser, deleteUser } from '@/app/actions';
 import type { User, UserRole } from '@/types';
-import { Loader2, UserPlus, Users as UsersIcon, Trash2, Edit, AlertTriangle, Copy, Briefcase, KeyRound } from 'lucide-react';
+import { Loader2, UserPlus, Users as UsersIcon, Trash2, Edit, AlertTriangle, Briefcase } from 'lucide-react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -31,12 +31,11 @@ const predefinedWorkstations = [
   'Centro Logístico',
 ];
 
-// Adjusted schema: password is now optional here, actual requirement handled by API or specific logic for admin
 const UserFormSchema = z.object({
   username: z.string().min(3, { message: "El nombre de usuario (Cédula para operadores) debe tener al menos 3 caracteres." }),
   role: z.enum(["admin", "operator"], { required_error: "El rol es requerido." }),
   workstation: z.string().optional(),
-  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres.").optional().or(z.literal('')), // Optional, but if provided, min 6 chars
+  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres.").optional().or(z.literal('')), 
 }).superRefine((data, ctx) => {
   if (data.role === "operator" && (!data.workstation || data.workstation.trim() === "")) {
     ctx.addIssue({
@@ -45,15 +44,14 @@ const UserFormSchema = z.object({
       path: ["workstation"],
     });
   }
-  if (data.role === "admin" && !data.password) {
-    // This client-side check can be debated. The API should be the source of truth.
-    // For now, we'll require it visually if admin is selected.
-    // The external API will ultimately decide if it's required for creation.
-    // ctx.addIssue({
-    //   code: z.ZodIssueCode.custom,
-    //   message: "La contraseña es requerida para el rol de administrador.",
-    //   path: ["password"],
-    // });
+  if (data.role === "admin" && (!data.password || data.password.trim() === "")) {
+    // For mock, we'll require it in UI, action will set default if needed
+    // but better UX if admin sets one.
+     ctx.addIssue({
+       code: z.ZodIssueCode.custom,
+       message: "La contraseña inicial es requerida para el rol de administrador.",
+       path: ["password"],
+     });
   }
 });
 
@@ -83,7 +81,7 @@ export function UsersTab() {
     if (watchedRole === "admin") {
       form.setValue("workstation", ""); 
       form.clearErrors("workstation"); 
-    } else {
+    } else if (watchedRole === "operator") {
       form.setValue("password", "");
       form.clearErrors("password");
     }
@@ -108,15 +106,6 @@ export function UsersTab() {
     fetchUsers();
   }, []);
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-      toast({ title: "¡Copiado!", description: "Contraseña copiada al portapapeles." });
-    }).catch(err => {
-      toast({ title: "Error al copiar", description: "No se pudo copiar la contraseña.", variant: "destructive" });
-    });
-  };
-
-
   const onSubmit = async (data: UserFormData) => {
     const formData = new FormData();
     formData.append('username', data.username);
@@ -124,29 +113,16 @@ export function UsersTab() {
     if (data.role === "operator" && data.workstation) {
       formData.append('workstation', data.workstation);
     }
-    // Password for admin is sent if provided. External API handles generation/forcing change.
     if (data.role === "admin" && data.password) {
       formData.append('password', data.password);
     }
-
 
     startSubmitting(async () => {
       const result = await addUser(formData);
       if (result.success && result.user) {
         toast({
           title: "Usuario Agregado",
-          description: (
-            <div>
-              <p>{result.message}</p>
-              {/* Displaying generated password depends on API returning it. */}
-              {/* For now, assume API handles password and informs user if needed. */}
-              {result.user.role === "admin" && result.user.forcePasswordChange && (
-                 <p className="text-xs text-muted-foreground mt-1">
-                    El administrador deberá cambiar su contraseña al iniciar sesión.
-                 </p>
-              )}
-            </div>
-          ),
+          description: result.message, // Message from action.ts will include info about password for admin
           duration: result.user.role === "admin" && result.user.forcePasswordChange ? 10000 : 5000, 
         });
         fetchUsers();
@@ -169,7 +145,6 @@ export function UsersTab() {
   };
   
   const handleDeleteUser = (userId: string, username: string) => {
-    // Basic client-side check, the API should enforce this too.
     if (username.toLowerCase() === 'admin' && users.length === 1) {
         toast({
             title: "Acción no permitida",
@@ -203,7 +178,7 @@ export function UsersTab() {
             <div>
               <CardTitle className="text-3xl font-bold text-primary flex items-center"><UsersIcon className="mr-2 h-8 w-8" />Control de usuarios</CardTitle>
               <CardDescription className="text-lg">
-                Crear un nuevo usuario o eliminar uno existente. Los usuarios son gestionados por una API externa.
+                Crear un nuevo usuario o eliminar uno existente. (Usando Mocks Internos)
               </CardDescription>
             </div>
             <Dialog open={isAddUserDialogOpen} onOpenChange={(open) => {
@@ -215,11 +190,11 @@ export function UsersTab() {
                   <UserPlus className="mr-2 h-5 w-5" /> Nuevo usuario
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[480px]"> {/* Increased width for password field */}
+              <DialogContent className="sm:max-w-[480px]">
                 <DialogHeader>
-                  <DialogTitle>Nuevo Usuario</DialogTitle>
+                  <DialogTitle>Nuevo Usuario (Mock)</DialogTitle>
                   <DialogDescription>
-                    Para administradores, ingrese una contraseña inicial. Para operarios, solo se requiere la cédula y puesto de trabajo.
+                    Para administradores, ingrese una contraseña inicial. Para operarios, solo cédula y puesto.
                   </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -326,12 +301,12 @@ export function UsersTab() {
           {isLoadingUsers ? (
             <div className="flex justify-center items-center h-64">
               <Loader2 className="h-12 w-12 animate-spin text-primary" />
-              <p className="ml-4 text-lg text-muted-foreground">Cargando usuarios desde API externa...</p>
+              <p className="ml-4 text-lg text-muted-foreground">Cargando usuarios (mock)...</p>
             </div>
           ) : users.length === 0 ? (
              <div className="text-center py-10">
                 <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-xl text-muted-foreground">No se encontraron usuarios en la API externa.</p>
+                <p className="text-xl text-muted-foreground">No se encontraron usuarios (mock).</p>
                 <p className="text-sm text-muted-foreground">Cree un nuevo usuario.</p>
               </div>
           ) : (
@@ -372,7 +347,7 @@ export function UsersTab() {
                         )}
                       </TableCell>
                       <TableCell className="text-right space-x-1">
-                        <Button variant="ghost" size="icon" aria-label="Editar usuario" disabled> {/* Edit is illustrative, needs API endpoint */}
+                        <Button variant="ghost" size="icon" aria-label="Editar usuario" disabled> 
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button 
@@ -380,7 +355,7 @@ export function UsersTab() {
                           size="icon" 
                           aria-label="Eliminar usuario"
                           onClick={() => handleDeleteUser(user.id, user.username)}
-                          disabled={isDeleting || (user.username.toLowerCase() === 'admin' && user.id === "1")} // Example: protect user with ID "1" if it's a primary admin
+                          disabled={isDeleting || (user.username.toLowerCase() === 'admin' && user.id === "1")} 
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
