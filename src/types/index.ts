@@ -1,5 +1,5 @@
 
-export type NoticeStatus = "Pendiente" | "Enviado" | "Fallido";
+export type NoticeStatus = "Pendiente" | "Enviado";
 
 // Simplified interface for Maintenance Notices for external API integration
 export interface MaintenanceNoticeAPI {

@@ -12,36 +12,48 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/hooks/use-toast';
 import { getUsers, addUser, deleteUser } from '@/app/actions';
 import type { User, UserRole } from '@/types';
-import { Loader2, UserPlus, Users as UsersIcon, Trash2, Edit, AlertTriangle, Copy, Briefcase } from 'lucide-react';
+import { Loader2, UserPlus, Users as UsersIcon, Trash2, Edit, AlertTriangle, Copy, Briefcase, KeyRound } from 'lucide-react';
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 const predefinedWorkstations = [
-  'Assembly Line 1', 
-  'Assembly Line 2', 
-  'Packaging Station 1', 
-  'Packaging Station 2', 
-  'Quality Control', 
-  'Warehouse Section A',
-  'Maintenance Bay 1',
-  'Machining Center Alpha',
-  'Welding Booth 3',
-  'Logistics Hub',
+  'Línea de Ensamblaje 1', 
+  'Línea de Ensamblaje 2', 
+  'Estación de Empaque 1', 
+  'Estación de Empaque 2', 
+  'Control de Calidad', 
+  'Almacén Sección A',
+  'Bahía de Mantenimiento 1',
+  'Centro de Maquinado Alpha',
+  'Cabina de Soldadura 3',
+  'Centro Logístico',
 ];
 
+// Adjusted schema: password is now optional here, actual requirement handled by API or specific logic for admin
 const UserFormSchema = z.object({
-  username: z.string().min(3, { message: "Username (Cedula for operators) must be at least 3 characters." }),
-  role: z.enum(["admin", "operator"], { required_error: "Role is required." }),
+  username: z.string().min(3, { message: "El nombre de usuario (Cédula para operadores) debe tener al menos 3 caracteres." }),
+  role: z.enum(["admin", "operator"], { required_error: "El rol es requerido." }),
   workstation: z.string().optional(),
+  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres.").optional().or(z.literal('')), // Optional, but if provided, min 6 chars
 }).superRefine((data, ctx) => {
   if (data.role === "operator" && (!data.workstation || data.workstation.trim() === "")) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "Workstation is required for operator role.",
+      message: "El puesto de trabajo es requerido para el rol de operario.",
       path: ["workstation"],
     });
+  }
+  if (data.role === "admin" && !data.password) {
+    // This client-side check can be debated. The API should be the source of truth.
+    // For now, we'll require it visually if admin is selected.
+    // The external API will ultimately decide if it's required for creation.
+    // ctx.addIssue({
+    //   code: z.ZodIssueCode.custom,
+    //   message: "La contraseña es requerida para el rol de administrador.",
+    //   path: ["password"],
+    // });
   }
 });
 
@@ -61,6 +73,7 @@ export function UsersTab() {
       username: "",
       role: "operator",
       workstation: "",
+      password: "",
     },
   });
 
@@ -68,8 +81,11 @@ export function UsersTab() {
 
   useEffect(() => {
     if (watchedRole === "admin") {
-      form.setValue("workstation", ""); // Clear workstation if role changes to admin
-      form.clearErrors("workstation"); // Clear any workstation errors
+      form.setValue("workstation", ""); 
+      form.clearErrors("workstation"); 
+    } else {
+      form.setValue("password", "");
+      form.clearErrors("password");
     }
   }, [watchedRole, form]);
 
@@ -80,8 +96,8 @@ export function UsersTab() {
         setUsers(fetchedUsers);
       } catch (e) {
         toast({
-          title: "Error fetching users",
-          description: e instanceof Error ? e.message : "An unknown error occurred.",
+          title: "Error al cargar usuarios",
+          description: e instanceof Error ? e.message : "Ocurrió un error desconocido.",
           variant: "destructive",
         });
       }
@@ -94,9 +110,9 @@ export function UsersTab() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).then(() => {
-      toast({ title: "Copied!", description: "Password copied to clipboard." });
+      toast({ title: "¡Copiado!", description: "Contraseña copiada al portapapeles." });
     }).catch(err => {
-      toast({ title: "Copy Failed", description: "Could not copy password.", variant: "destructive" });
+      toast({ title: "Error al copiar", description: "No se pudo copiar la contraseña.", variant: "destructive" });
     });
   };
 
@@ -108,31 +124,33 @@ export function UsersTab() {
     if (data.role === "operator" && data.workstation) {
       formData.append('workstation', data.workstation);
     }
+    // Password for admin is sent if provided. External API handles generation/forcing change.
+    if (data.role === "admin" && data.password) {
+      formData.append('password', data.password);
+    }
+
 
     startSubmitting(async () => {
       const result = await addUser(formData);
-      if (result.success) {
+      if (result.success && result.user) {
         toast({
-          title: "User Added",
+          title: "Usuario Agregado",
           description: (
             <div>
               <p>{result.message}</p>
-              {result.generatedPassword && data.role === "admin" && (
-                <div className="mt-2">
-                  Generated Password: 
-                  <span className="font-mono bg-muted p-1 rounded mx-1">{result.generatedPassword}</span>
-                  <Button variant="ghost" size="icon" className="ml-1 h-6 w-6" onClick={() => copyToClipboard(result.generatedPassword!)}>
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                  <p className="text-xs text-muted-foreground">Admin user will be forced to change this on first login.</p>
-                </div>
+              {/* Displaying generated password depends on API returning it. */}
+              {/* For now, assume API handles password and informs user if needed. */}
+              {result.user.role === "admin" && result.user.forcePasswordChange && (
+                 <p className="text-xs text-muted-foreground mt-1">
+                    El administrador deberá cambiar su contraseña al iniciar sesión.
+                 </p>
               )}
             </div>
           ),
-          duration: 10000, 
+          duration: result.user.role === "admin" && result.user.forcePasswordChange ? 10000 : 5000, 
         });
         fetchUsers();
-        form.reset({ username: "", role: "operator", workstation: "" });
+        form.reset({ username: "", role: "operator", workstation: "", password: "" });
         setIsAddUserDialogOpen(false);
       } else {
         if (result.errors) {
@@ -141,7 +159,7 @@ export function UsersTab() {
           });
         } else {
            toast({
-            title: "Error adding user",
+            title: "Error al agregar usuario",
             description: result.message,
             variant: "destructive",
           });
@@ -151,14 +169,24 @@ export function UsersTab() {
   };
   
   const handleDeleteUser = (userId: string, username: string) => {
-    const isConfirmed = window.confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`);
+    // Basic client-side check, the API should enforce this too.
+    if (username.toLowerCase() === 'admin' && users.length === 1) {
+        toast({
+            title: "Acción no permitida",
+            description: "No se puede eliminar el único usuario administrador.",
+            variant: "destructive",
+        });
+        return;
+    }
+
+    const isConfirmed = window.confirm(`¿Está seguro de que desea eliminar al usuario "${username}"? Esta acción no se puede deshacer.`);
     if (!isConfirmed) {
       return;
     }
     startDeleting(async () => {
       const result = await deleteUser(userId);
       toast({
-        title: result.success ? "User Deleted" : "Deletion Failed",
+        title: result.success ? "Usuario Eliminado" : "Eliminación Fallida",
         description: result.message,
         variant: result.success ? "default" : "destructive",
       });
@@ -175,23 +203,23 @@ export function UsersTab() {
             <div>
               <CardTitle className="text-3xl font-bold text-primary flex items-center"><UsersIcon className="mr-2 h-8 w-8" />Control de usuarios</CardTitle>
               <CardDescription className="text-lg">
-                Crea un nuevo usuario o elimina uno existente.
+                Crear un nuevo usuario o eliminar uno existente. Los usuarios son gestionados por una API externa.
               </CardDescription>
             </div>
             <Dialog open={isAddUserDialogOpen} onOpenChange={(open) => {
               setIsAddUserDialogOpen(open);
-              if (!open) form.reset({ username: "", role: "operator", workstation: "" });
+              if (!open) form.reset({ username: "", role: "operator", workstation: "", password: "" });
             }}>
               <DialogTrigger asChild>
                 <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-md">
                   <UserPlus className="mr-2 h-5 w-5" /> Nuevo usuario
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
+              <DialogContent className="sm:max-w-[480px]"> {/* Increased width for password field */}
                 <DialogHeader>
                   <DialogTitle>Nuevo Usuario</DialogTitle>
                   <DialogDescription>
-                    Administradores se le va generar contraseña y para los operadores solamente entran con la cedula.
+                    Para administradores, ingrese una contraseña inicial. Para operarios, solo se requiere la cédula y puesto de trabajo.
                   </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -203,7 +231,7 @@ export function UsersTab() {
                         <FormItem className="grid grid-cols-4 items-center gap-4">
                           <FormLabel className="text-right">Usuario</FormLabel>
                           <FormControl className="col-span-3">
-                            <Input {...field} placeholder="Cédula o Admin" />
+                            <Input {...field} placeholder="Cédula o Usuario Admin" />
                           </FormControl>
                           <FormMessage className="col-span-3 col-start-2" />
                         </FormItem>
@@ -214,21 +242,17 @@ export function UsersTab() {
                       name="role"
                       render={({ field }) => (
                         <FormItem className="grid grid-cols-4 items-center gap-4">
-                          <FormLabel className="text-right">Role</FormLabel>
+                          <FormLabel className="text-right">Rol</FormLabel>
                            <Select 
                                 onValueChange={(value) => {
                                     field.onChange(value);
-                                    if (value === "admin") {
-                                        form.setValue("workstation", "");
-                                        form.clearErrors("workstation");
-                                    }
                                 }} 
                                 defaultValue={field.value} 
                                 value={field.value}
                             >
                             <FormControl className="col-span-3">
                                <SelectTrigger>
-                                <SelectValue placeholder="Select a role" />
+                                <SelectValue placeholder="Seleccione un rol" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -246,15 +270,15 @@ export function UsersTab() {
                         name="workstation"
                         render={({ field }) => (
                           <FormItem className="grid grid-cols-4 items-center gap-4">
-                            <FormLabel className="text-right">Puesto de trabajo</FormLabel>
+                            <FormLabel className="text-right">Puesto</FormLabel>
                             <Select 
                                 onValueChange={field.onChange} 
                                 defaultValue={field.value}
-                                value={field.value || ""} // Ensure value is not undefined for Select
+                                value={field.value || ""}
                             >
                               <FormControl className="col-span-3">
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Selecciona un puesto de trabajo" />
+                                  <SelectValue placeholder="Seleccione un puesto" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
@@ -263,6 +287,21 @@ export function UsersTab() {
                                 ))}
                               </SelectContent>
                             </Select>
+                            <FormMessage className="col-span-3 col-start-2" />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+                     {watchedRole === 'admin' && (
+                      <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem className="grid grid-cols-4 items-center gap-4">
+                            <FormLabel className="text-right">Contraseña</FormLabel>
+                            <FormControl className="col-span-3">
+                              <Input type="password" {...field} placeholder="Contraseña inicial para admin" />
+                            </FormControl>
                             <FormMessage className="col-span-3 col-start-2" />
                           </FormItem>
                         )}
@@ -287,13 +326,13 @@ export function UsersTab() {
           {isLoadingUsers ? (
             <div className="flex justify-center items-center h-64">
               <Loader2 className="h-12 w-12 animate-spin text-primary" />
-              <p className="ml-4 text-lg text-muted-foreground">Cargando usuarios...</p>
+              <p className="ml-4 text-lg text-muted-foreground">Cargando usuarios desde API externa...</p>
             </div>
           ) : users.length === 0 ? (
              <div className="text-center py-10">
                 <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-xl text-muted-foreground">No se ha encontrado ningun usuario.</p>
-                <p className="text-sm text-muted-foreground">Crea un nuevo usuario.</p>
+                <p className="text-xl text-muted-foreground">No se encontraron usuarios en la API externa.</p>
+                <p className="text-sm text-muted-foreground">Cree un nuevo usuario.</p>
               </div>
           ) : (
             <div className="overflow-x-auto rounded-md border">
@@ -301,9 +340,9 @@ export function UsersTab() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Usuario/Cédula</TableHead>
-                    <TableHead>Role</TableHead>
+                    <TableHead>Rol</TableHead>
                     <TableHead>Puesto de trabajo</TableHead>
-                    <TableHead>Cambio Contraseña Pendiente</TableHead>
+                    <TableHead className="text-center">Cambio Contraseña Pendiente</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -323,25 +362,25 @@ export function UsersTab() {
                             <span className="text-muted-foreground italic">N/A</span>
                         )}
                         </TableCell>
-                      <TableCell>
+                      <TableCell className="text-center">
                         {user.role === 'admin' ? (
-                          <Badge variant={user.forcePasswordChange ? "destructive" : "secondary"} className="shadow-sm">
-                            {user.forcePasswordChange ? "Sí" : "No"}
-                          </Badge>
+                          user.forcePasswordChange ? 
+                            <Badge variant={"destructive"} className="shadow-sm">Sí</Badge> :
+                            <Badge variant={"secondary"} className="shadow-sm">No</Badge>
                         ) : (
-                          <span className="text-muted-foreground italic">No Aplica</span>
+                          <Badge variant="outline" className="shadow-sm text-muted-foreground">No Aplica</Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button variant="ghost" size="icon" aria-label="Edit user" disabled> {/* Edit is illustrative */}
+                      <TableCell className="text-right space-x-1">
+                        <Button variant="ghost" size="icon" aria-label="Editar usuario" disabled> {/* Edit is illustrative, needs API endpoint */}
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          aria-label="Delete user"
+                          aria-label="Eliminar usuario"
                           onClick={() => handleDeleteUser(user.id, user.username)}
-                          disabled={isDeleting || user.username === 'admin'} 
+                          disabled={isDeleting || (user.username.toLowerCase() === 'admin' && user.id === "1")} // Example: protect user with ID "1" if it's a primary admin
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -356,4 +395,3 @@ export function UsersTab() {
     </div>
   );
 }
-
