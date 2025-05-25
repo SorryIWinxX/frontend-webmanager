@@ -1,38 +1,30 @@
 
 import { z } from 'zod';
 
-const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/; // HH:MM format
-const dateRegex = /^\d{4}-\d{2}-\d{2}$/; // YYYY-MM-DD format
+// ISO 8601 date string regex (simplified: basic structure)
+const isoDateTimeString = z.string().datetime({ offset: true, message: "Debe ser una fecha y hora ISO 8601 válida (ej: 2024-01-15T08:00:00.000Z)" });
 
 export const CreateMaintenanceNoticeSchema = z.object({
-  equipmentNumber: z.string().optional(),
-  functionalLocation: z.string().optional(),
-  assembly: z.string().optional(),
-  shortText: z.string().min(1, "Short text is required"),
-  priority: z.string().optional(), // Consider enum if specific values
-  requiredStartDate: z.string().regex(dateRegex, "Invalid required start date format (YYYY-MM-DD)").optional(),
-  requiredStartTime: z.string().regex(timeRegex, "Invalid required start time format (HH:MM)").optional(),
-  requiredEndDate: z.string().regex(dateRegex, "Invalid required end date format (YYYY-MM-DD)").optional(),
-  requiredEndTime: z.string().regex(timeRegex, "Invalid required end time format (HH:MM)").optional(),
-  workCenterObjectId: z.string().optional(),
-  malfunctionEndDate: z.string().regex(dateRegex, "Invalid malfunction end date format (YYYY-MM-DD)").optional(),
-  malfunctionEndTime: z.string().regex(timeRegex, "Invalid malfunction end time format (HH:MM)").optional(),
-  reporterName: z.string().optional(),
-  startPoint: z.string().optional(),
-  endPoint: z.string().optional(),
-  length: z.number().positive("Length must be a positive number").optional(),
-  linearUnit: z.string().optional(),
-  problemCodeGroup: z.string().optional(),
-  problemCode: z.string().optional(),
-  objectPartCodeGroup: z.string().optional(),
-  objectPartCode: z.string().optional(),
-  causeText: z.string().optional(),
+  tipoAvisoId: z.number({ required_error: "tipoAvisoId es requerido." }),
+  equipoId: z.number({ required_error: "equipoId es requerido." }),
+  ubicacionTecnicaId: z.number({ required_error: "ubicacionTecnicaId es requerido." }),
+  textoBreve: z.string().min(1, "textoBreve es requerido."),
+  fechaInicio: isoDateTimeString,
+  fechaFin: isoDateTimeString,
+  horaInicio: isoDateTimeString, // Following user spec, even if redundant with fechaInicio if it's full datetime
+  horaFin: isoDateTimeString,    // Following user spec
+  puestoTrabajoId: z.number().optional(),
+  parteObjetoId: z.number().optional(),
+  createdById: z.number().optional(),
+  imageUrl: z.string().url("Debe ser una URL válida para la imagen.").optional(), // Added for potential direct image URL input
+  data_ai_hint: z.string().optional(), // Added for potential direct image URL input
 });
+
 export type CreateMaintenanceNoticeInput = z.infer<typeof CreateMaintenanceNoticeSchema>;
 
 export const UpdateMaintenanceNoticeSchema = CreateMaintenanceNoticeSchema.partial().extend({
-  // shortText could be required if updates always need it, but typically partial updates allow omitting fields.
-  // If status can be updated by mobile, add:
-  // status: z.enum(["Pending", "Sent", "Failed"]).optional(), 
+  // Fields that might not be updatable or have specific update logic can be refined here.
+  // For now, allowing partial updates of all fields from create schema.
 });
+
 export type UpdateMaintenanceNoticeInput = z.infer<typeof UpdateMaintenanceNoticeSchema>;

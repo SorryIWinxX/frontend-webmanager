@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { getNotices, sendNoticesToSAP } from '@/app/actions';
 import type { MaintenanceNoticeAPI, NoticeStatus } from '@/types';
-import { Loader2, Send, ListChecks, AlertTriangle, CheckCircle, Eye, ImageOff, ChevronLeft, ChevronRight, Briefcase, Settings, UserCircle, CalendarDays, Clock, MapPin, Hash, HelpCircle, FileText, Tag, GripVertical, Anchor, Info, Edit } from 'lucide-react';
+import { Loader2, Send, ListChecks, AlertTriangle, CheckCircle, Eye, ImageOff, ChevronLeft, ChevronRight, Info, UserCircle, CalendarDays, Clock, Tag, Hash, Edit, Settings, HelpCircle, Briefcase } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -30,7 +30,7 @@ interface DetailItemProps {
 
 const DetailItem: React.FC<DetailItemProps> = ({ icon: Icon, label, value, isCode = false, fullWidthValue = false, placeholder = "---" }) => {
   const displayValue = (value === undefined || value === null || String(value).trim() === '') ? placeholder : String(value);
-  
+
   if (fullWidthValue) {
     return (
       <div>
@@ -71,8 +71,8 @@ export function NoticesTab() {
       try {
         const fetchedNotices = await getNotices();
         setNotices(fetchedNotices);
-        setPendingCurrentPage(1); 
-        setProcessedCurrentPage(1); 
+        setPendingCurrentPage(1);
+        setProcessedCurrentPage(1);
       } catch (e) {
         toast({
           title: "Error al cargar avisos",
@@ -94,7 +94,7 @@ export function NoticesTab() {
   };
 
   const pendingNotices = notices.filter(n => n.status === "Pendiente");
-  const sentNotices = notices.filter(n => n.status !== "Pendiente"); // includes "Enviado" and "Fallido"
+  const sentNotices = notices.filter(n => n.status !== "Pendiente");
 
   const handleSelectAllPending = (checked: boolean | "indeterminate") => {
     if (checked === true) {
@@ -103,12 +103,7 @@ export function NoticesTab() {
       setSelectedNotices(prev => prev.filter(id => !pendingNotices.some(pn => pn.id === id)));
     }
   };
-  
-  const currentVisiblePendingNotices = pendingNotices.slice(
-    (pendingCurrentPage - 1) * ITEMS_PER_PAGE,
-    pendingCurrentPage * ITEMS_PER_PAGE
-  );
-  
+
   const handleSendToSAP = () => {
     const noticesToSend = selectedNotices.filter(id => pendingNotices.some(pn => pn.id === id));
     if (noticesToSend.length === 0) {
@@ -129,8 +124,8 @@ export function NoticesTab() {
           variant: result.success ? "default" : "destructive",
         });
         if (result.success) {
-          fetchNoticesData(); 
-          setSelectedNotices([]); 
+          fetchNoticesData();
+          setSelectedNotices([]);
         }
       } catch (e) {
         toast({
@@ -145,11 +140,11 @@ export function NoticesTab() {
   const getStatusBadgeVariant = (status: NoticeStatus): "destructive" | "default" | "outline" | "secondary" => {
     switch (status) {
       case "Pendiente":
-        return "destructive"; 
+        return "destructive";
       case "Enviado":
-        return "default"; 
+        return "default";
       case "Fallido":
-        return "outline"; 
+        return "outline";
       default:
         return "secondary";
     }
@@ -160,27 +155,18 @@ export function NoticesTab() {
     setIsDetailDialogOpen(true);
   };
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'dd/mm/aaaa';
+  const formatDate = (dateString?: string, dateFormat = 'dd/MM/yyyy HH:mm') => {
+    if (!dateString) return 'dd/mm/aaaa hh:mm';
     try {
-      return format(new Date(dateString), 'dd/MM/yyyy', { locale: es });
+      return format(new Date(dateString), dateFormat, { locale: es });
     } catch {
       return 'Fecha inválida';
     }
   };
-  
-  const formatTime = (timeString?: string) => {
-    if (!timeString) return '---';
-    // Basic HH:MM check, can be improved
-    if (/^([01]\d|2[0-3]):([0-5]\d)$/.test(timeString)) {
-        return timeString;
-    }
-    return '---';
-  };
 
   const renderNoticeTable = (
-    title: string, 
-    data: MaintenanceNoticeAPI[], 
+    title: string,
+    data: MaintenanceNoticeAPI[],
     isPendingTable: boolean,
     currentPage: number,
     setCurrentPage: (page: number) => void,
@@ -201,7 +187,6 @@ export function NoticesTab() {
 
     const isAllCurrentPageSelected = isPendingTable && paginatedData.length > 0 && paginatedData.every(n => selectedNotices.includes(n.id));
     const isIndeterminateCurrentPage = isPendingTable && paginatedData.some(n => selectedNotices.includes(n.id)) && !isAllCurrentPageSelected;
-
 
     return (
       <Card className="border mt-4">
@@ -228,7 +213,7 @@ export function NoticesTab() {
                     <TableRow>
                       {isPendingTable && (
                         <TableHead className="w-[50px]">
-                          <Checkbox 
+                          <Checkbox
                             checked={isAllCurrentPageSelected || (isIndeterminateCurrentPage ? "indeterminate" : false)}
                             onCheckedChange={handleSelectAllForCurrentPage}
                             aria-label="Seleccionar todos los avisos en la página actual"
@@ -237,10 +222,9 @@ export function NoticesTab() {
                         </TableHead>
                       )}
                       <TableHead className="w-[80px]">Imagen</TableHead>
-                      <TableHead>Texto Corto</TableHead>
-                      <TableHead className="hidden lg:table-cell">Nº Equipo</TableHead>
-                      <TableHead className="hidden md:table-cell">Ubic. Técnica</TableHead>
-                      <TableHead className="hidden sm:table-cell">Prioridad</TableHead>
+                      <TableHead>Texto Breve</TableHead>
+                      <TableHead className="hidden lg:table-cell">Equipo ID</TableHead>
+                      <TableHead className="hidden md:table-cell">Ubic. Técnica ID</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead className="hidden md:table-cell">Creado el</TableHead>
                       <TableHead className="text-right">Detalles</TableHead>
@@ -260,12 +244,12 @@ export function NoticesTab() {
                         )}
                         <TableCell>
                           {notice.imageUrl ? (
-                            <Image 
-                              src={notice.imageUrl} 
-                              alt={notice.shortText} 
-                              width={60} 
-                              height={40} 
-                              className="rounded object-cover" 
+                            <Image
+                              src={notice.imageUrl}
+                              alt={notice.textoBreve}
+                              width={60}
+                              height={40}
+                              className="rounded object-cover"
                               data-ai-hint={notice.data_ai_hint || "mantenimiento"}
                             />
                           ) : (
@@ -274,10 +258,9 @@ export function NoticesTab() {
                             </div>
                           )}
                         </TableCell>
-                        <TableCell id={`notice-title-${notice.id}`} className="font-medium max-w-xs truncate">{notice.shortText}</TableCell>
-                        <TableCell className="hidden lg:table-cell max-w-[150px] truncate">{notice.equipmentNumber || 'N/A'}</TableCell>
-                        <TableCell className="hidden md:table-cell max-w-[150px] truncate">{notice.functionalLocation || 'N/A'}</TableCell>
-                        <TableCell className="hidden sm:table-cell">{notice.priority || 'N/A'}</TableCell>
+                        <TableCell id={`notice-title-${notice.id}`} className="font-medium max-w-xs truncate">{notice.textoBreve}</TableCell>
+                        <TableCell className="hidden lg:table-cell max-w-[150px] truncate">{notice.equipoId}</TableCell>
+                        <TableCell className="hidden md:table-cell max-w-[150px] truncate">{notice.ubicacionTecnicaId}</TableCell>
                         <TableCell>
                           <Badge variant={getStatusBadgeVariant(notice.status)} className="shadow-sm">
                             {notice.status}
@@ -333,7 +316,7 @@ export function NoticesTab() {
             <div>
               <CardTitle className="text-3xl font-bold text-primary flex items-center"><ListChecks className="mr-2 h-8 w-8" />Avisos de mantenimiento</CardTitle>
               <CardDescription className="text-lg">
-              Ver, administrar y enviar avisos de mantenimiento a SAP.
+              Ver, administrar y enviar avisos de mantenimiento.
               </CardDescription>
             </div>
             <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
@@ -350,14 +333,14 @@ export function NoticesTab() {
                     </label>
                 </div>
               )}
-              <Button 
-                onClick={handleSendToSAP} 
+              <Button
+                onClick={handleSendToSAP}
                 disabled={isSending || selectedNotices.filter(id => pendingNotices.some(pn => pn.id === id)).length === 0}
                 className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-md"
                 aria-live="polite"
               >
                 {isSending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Send className="mr-2 h-5 w-5" />}
-                Enviar a SAP ({selectedNotices.filter(id => pendingNotices.some(pn => pn.id === id)).length})
+                Enviar ({selectedNotices.filter(id => pendingNotices.some(pn => pn.id === id)).length})
               </Button>
             </div>
           </div>
@@ -371,7 +354,7 @@ export function NoticesTab() {
           ) : (
             <Fragment>
               {renderNoticeTable("Avisos Pendientes", pendingNotices, true, pendingCurrentPage, setPendingCurrentPage, pendingNotices.length)}
-              {renderNoticeTable("Avisos Procesados", sentNotices, false, processedCurrentPage, setProcessedCurrentPage, sentNotices.length)}
+              {renderNoticeTable("Avisos Procesados (Enviados/Fallidos)", sentNotices, false, processedCurrentPage, setProcessedCurrentPage, sentNotices.length)}
               {notices.length > 0 && pendingNotices.length === 0 && !isLoadingNotices && (
                 <div className="mt-6 p-4 bg-green-500/10 text-green-700 border border-green-500/20 rounded-md text-center">
                     <CheckCircle className="inline-block mr-2 h-5 w-5" />
@@ -393,64 +376,54 @@ export function NoticesTab() {
         <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
           <DialogContent className="sm:max-w-lg md:max-w-xl lg:max-w-2xl">
             <DialogHeader>
-              <DialogTitle className="text-2xl">{selectedNoticeDetail.shortText}</DialogTitle>
+              <DialogTitle className="text-2xl">{selectedNoticeDetail.textoBreve}</DialogTitle>
               <DialogDescription className="flex items-center gap-2">
-                Estado: <Badge variant={getStatusBadgeVariant(selectedNoticeDetail.status)}>{selectedNoticeDetail.status}</Badge> | 
-                Creado: {format(new Date(selectedNoticeDetail.createdAt), "PPp", { locale: es })}
+                ID Interno: <Badge variant="outline">{selectedNoticeDetail.id}</Badge> |
+                Estado: <Badge variant={getStatusBadgeVariant(selectedNoticeDetail.status)}>{selectedNoticeDetail.status}</Badge>
               </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[60vh] p-1 pr-4">
-              <div className="grid gap-y-1 py-4">
+              <div className="grid gap-y-3 py-4">
 
-                <h3 className="font-semibold text-lg mb-2 border-b pb-1 text-primary">Información Básica</h3>
-                
                 {selectedNoticeDetail.imageUrl && (
                   <div className="relative w-full h-64 md:h-80 rounded-md overflow-hidden border my-2">
-                    <Image 
-                        src={selectedNoticeDetail.imageUrl} 
-                        alt={selectedNoticeDetail.shortText} 
+                    <Image
+                        src={selectedNoticeDetail.imageUrl}
+                        alt={selectedNoticeDetail.textoBreve}
                         fill
                         style={{objectFit: "contain"}}
                         data-ai-hint={selectedNoticeDetail.data_ai_hint || "detalle mantenimiento"}
                     />
                   </div>
                 )}
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                    <div><span className="font-semibold">Tipo de Aviso:</span> <span className="text-muted-foreground">{selectedNoticeDetail.noticeType || "M1"}</span></div>
-                    <div><span className="font-semibold">Equipo:</span> <span className="text-muted-foreground">{selectedNoticeDetail.equipmentNumber || "(vacío)"}</span></div>
-                    <div><span className="font-semibold">Ubicación Técnica:</span> <span className="text-muted-foreground">{selectedNoticeDetail.functionalLocation || "(vacío)"}</span></div>
-                    <div><span className="font-semibold">Fecha Inicio:</span> <span className="text-muted-foreground">{formatDate(selectedNoticeDetail.requiredStartDate)}</span></div>
-                    <div><span className="font-semibold">Hora Inicio:</span> <span className="text-muted-foreground">{formatTime(selectedNoticeDetail.requiredStartTime)}</span></div>
-                    <div><span className="font-semibold">Fecha Fin:</span> <span className="text-muted-foreground">{formatDate(selectedNoticeDetail.requiredEndDate)}</span></div>
-                    <div><span className="font-semibold">Hora Fin:</span> <span className="text-muted-foreground">{formatTime(selectedNoticeDetail.requiredEndTime)}</span></div>
-                    <div><span className="font-semibold">Puesto de Trabajo:</span> <span className="text-muted-foreground">{selectedNoticeDetail.workCenterObjectId || "(vacío)"}</span></div>
-                    <div><span className="font-semibold">Reportado por:</span> <span className="text-muted-foreground">{selectedNoticeDetail.reporterName || "---"}</span></div>
-                    <div><span className="font-semibold">Punto de Inicio:</span> <span className="text-muted-foreground">{selectedNoticeDetail.startPoint || "(vacío)"}</span></div>
-                    <div><span className="font-semibold">Punto de Fin:</span> <span className="text-muted-foreground">{selectedNoticeDetail.endPoint || "(vacío)"}</span></div>
+
+                <h3 className="font-semibold text-lg mb-1 border-b pb-1 text-primary">Información Principal (API)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                  <DetailItem icon={Tag} label="Tipo Aviso ID" value={selectedNoticeDetail.tipoAvisoId} placeholder="N/A" />
+                  <DetailItem icon={Settings} label="Equipo ID" value={selectedNoticeDetail.equipoId} placeholder="N/A" />
+                  <DetailItem icon={Briefcase} label="Ubicación Técnica ID" value={selectedNoticeDetail.ubicacionTecnicaId} placeholder="N/A" />
+                  <DetailItem icon={Info} label="Puesto Trabajo ID" value={selectedNoticeDetail.puestoTrabajoId} placeholder="N/A" />
+                  <DetailItem icon={Edit} label="Parte Objeto ID" value={selectedNoticeDetail.parteObjetoId} placeholder="N/A" />
+                  <DetailItem icon={UserCircle} label="Creado Por ID (API)" value={selectedNoticeDetail.createdById} placeholder="N/A" />
                 </div>
-                
-                <DetailItem icon={Hash} label="ID Aviso" value={selectedNoticeDetail.id} isCode placeholder="N/A"/>
-                
-                <h3 className="font-semibold text-lg mb-1 mt-4 border-b pb-1 text-primary">Información Adicional</h3>
-                <DetailItem icon={Info} label="Prioridad" value={selectedNoticeDetail.priority} placeholder="N/A" />
-                <DetailItem icon={Anchor} label="Conjunto" value={selectedNoticeDetail.assembly} isCode placeholder="N/A" />
-                <DetailItem icon={CalendarDays} label="Fin Avería (Fecha)" value={selectedNoticeDetail.malfunctionEndDate ? formatDate(selectedNoticeDetail.malfunctionEndDate) : undefined} placeholder="dd/mm/aaaa"/>
-                <DetailItem icon={Clock} label="Fin Avería (Hora)" value={selectedNoticeDetail.malfunctionEndTime ? formatTime(selectedNoticeDetail.malfunctionEndTime) : undefined} placeholder="---"/>
-                
-                <h3 className="font-semibold text-lg mb-1 mt-3 border-b pb-1 text-primary">Datos Lineales</h3>
-                <DetailItem icon={GripVertical} label="Longitud" value={selectedNoticeDetail.length} placeholder="---" />
-                <DetailItem icon={Tag} label="Unidad Lineal" value={selectedNoticeDetail.linearUnit} placeholder="---" />
-                
-                <h3 className="font-semibold text-lg mb-1 mt-3 border-b pb-1 text-primary">Detalles del Problema</h3>
-                <DetailItem icon={HelpCircle} label="Grupo Cód. Problema" value={selectedNoticeDetail.problemCodeGroup} isCode placeholder="N/A" />
-                <DetailItem icon={HelpCircle} label="Código Problema" value={selectedNoticeDetail.problemCode} isCode placeholder="N/A" />
-                <DetailItem icon={Settings} label="Grupo Cód. Objeto" value={selectedNoticeDetail.objectPartCodeGroup} isCode placeholder="N/A" />
-                <DetailItem icon={Edit} label="Código Parte Objeto" value={selectedNoticeDetail.objectPartCode} isCode placeholder="N/A" />
-                
-                <DetailItem icon={FileText} label="Texto de Causa" value={selectedNoticeDetail.causeText} fullWidthValue placeholder="Sin texto de causa." />
-                
-                <DetailItem icon={CalendarDays} label="Última Actualización" value={selectedNoticeDetail.updatedAt ? format(new Date(selectedNoticeDetail.updatedAt), 'PPpp', { locale: es }) : 'N/A'} />
+                <DetailItem icon={HelpCircle} label="Texto Breve" value={selectedNoticeDetail.textoBreve} fullWidthValue placeholder="Sin texto breve."/>
+
+
+                <h3 className="font-semibold text-lg mb-1 mt-3 border-b pb-1 text-primary">Fechas y Horas (API)</h3>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                    <DetailItem icon={CalendarDays} label="Fecha Inicio" value={formatDate(selectedNoticeDetail.fechaInicio)} />
+                    <DetailItem icon={CalendarDays} label="Fecha Fin" value={formatDate(selectedNoticeDetail.fechaFin)} />
+                    <DetailItem icon={Clock} label="Hora Inicio (API)" value={formatDate(selectedNoticeDetail.horaInicio)} />
+                    <DetailItem icon={Clock} label="Hora Fin (API)" value={formatDate(selectedNoticeDetail.horaFin)} />
+                 </div>
+
+
+                <h3 className="font-semibold text-lg mb-1 mt-3 border-b pb-1 text-primary">Estado y Registro (Interno)</h3>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                    <DetailItem icon={Hash} label="ID Aviso (Interno)" value={selectedNoticeDetail.id} isCode />
+                    <DetailItem icon={CalendarDays} label="Creado el" value={formatDate(selectedNoticeDetail.createdAt, 'PPpp')} />
+                    <DetailItem icon={CalendarDays} label="Última Actualización" value={formatDate(selectedNoticeDetail.updatedAt, 'PPpp')} />
+                 </div>
 
               </div>
             </ScrollArea>
@@ -463,4 +436,3 @@ export function NoticesTab() {
     </div>
   );
 }
-

@@ -1,40 +1,30 @@
 
 export type NoticeStatus = "Pendiente" | "Enviado" | "Fallido";
 
-// Detailed interface for Maintenance Notices used by the API and stored internally
+// Simplified interface for Maintenance Notices for external API integration
 export interface MaintenanceNoticeAPI {
-  id: string;
-  noticeType?: string; // e.g., "M1" (Maintenance Request), "M2" (Malfunction Report)
-  equipmentNumber?: string;
-  functionalLocation?: string;
-  assembly?: string;
-  shortText: string; 
-  priority?: string;
-  requiredStartDate?: string; // Format: YYYY-MM-DD
-  requiredStartTime?: string; // Format: HH:MM
-  requiredEndDate?: string; // Format: YYYY-MM-DD
-  requiredEndTime?: string; // Format: HH:MM
-  workCenterObjectId?: string; // Object ID of the Work Center
-  malfunctionEndDate?: string; // Format: YYYY-MM-DD
-  malfunctionEndTime?: string; // Format: HH:MM
-  reporterName?: string; // Name of Person Reporting Notification
-  startPoint?: string;
-  endPoint?: string;
-  length?: number;
-  linearUnit?: string; // Unit of Measurement for Linear Data
-  problemCodeGroup?: string; // Code Group - Problem
-  problemCode?: string; // Problem or Damage Code
-  objectPartCodeGroup?: string; // Code Group - Object Parts
-  objectPartCode?: string; // Part of Object
-  causeText?: string; 
+  // Fields from the external API request
+  tipoAvisoId: number;
+  equipoId: number;
+  ubicacionTecnicaId: number;
+  textoBreve: string;
+  fechaInicio: string; // ISO Date string (YYYY-MM-DDTHH:mm:ss.sssZ)
+  fechaFin: string;   // ISO Date string
+  horaInicio: string; // ISO Date string, as per user spec for "receive"
+  horaFin: string;    // ISO Date string, as per user spec for "receive"
+  puestoTrabajoId?: number;
+  parteObjetoId?: number;
+  createdById?: number;
 
+  // App-internal fields
+  id: string; // Internal app-generated ID
   status: NoticeStatus;
   createdAt: string; // ISO DateTime string
   updatedAt: string; // ISO DateTime string
-
-  imageUrl?: string; 
-  data_ai_hint?: string; // For placeholder image generation
+  imageUrl?: string;
+  data_ai_hint?: string;
 }
+
 
 export type UserRole = "admin" | "operator";
 
@@ -72,8 +62,7 @@ export interface SAPOrder {
   workCenter?: string; // Specific work center for the task
   activityType?: string; // Maintenance activity type
   startPoint?: string;
-  endPoint?: string; 
+  endPoint?: string;
   length?: number;
   linearUnit?: string; // Unit of Measurement for Linear Data
 }
-

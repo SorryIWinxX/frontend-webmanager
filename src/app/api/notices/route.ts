@@ -1,9 +1,9 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { CreateMaintenanceNoticeSchema } from '@/lib/schemas';
-import { 
-    createMaintenanceNoticeAction, 
-    getNotices // Using getNotices as it now returns MaintenanceNoticeAPI[]
+import {
+    createMaintenanceNoticeAction,
+    getNotices
 } from '@/app/actions';
 
 export async function POST(request: NextRequest) {
@@ -12,20 +12,21 @@ export async function POST(request: NextRequest) {
     const validationResult = CreateMaintenanceNoticeSchema.safeParse(body);
 
     if (!validationResult.success) {
-      return NextResponse.json({ error: "Invalid input", details: validationResult.error.flatten() }, { status: 400 });
+      console.error("Validation errors:", validationResult.error.flatten());
+      return NextResponse.json({ error: "Entrada inválida", details: validationResult.error.flatten() }, { status: 400 });
     }
 
     const newNotice = await createMaintenanceNoticeAction(validationResult.data);
     return NextResponse.json(newNotice, { status: 201 });
 
   } catch (error) {
-    console.error("Error creating maintenance notice:", error);
-    let errorMessage = "Internal Server Error";
+    console.error("Error al crear aviso de mantenimiento:", error);
+    let errorMessage = "Error interno del servidor";
     if (error instanceof Error) {
         errorMessage = error.message;
     }
-     if (error instanceof SyntaxError) { 
-      return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+     if (error instanceof SyntaxError) { // Specifically for JSON parsing errors
+      return NextResponse.json({ error: "Payload JSON inválido" }, { status: 400 });
     }
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
@@ -33,11 +34,11 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const notices = await getNotices(); // getNotices now returns MaintenanceNoticeAPI[]
+    const notices = await getNotices();
     return NextResponse.json(notices, { status: 200 });
   } catch (error) {
-    console.error("Error fetching maintenance notices:", error);
-    let errorMessage = "Internal Server Error";
+    console.error("Error al obtener avisos de mantenimiento:", error);
+    let errorMessage = "Error interno del servidor";
     if (error instanceof Error) {
         errorMessage = error.message;
     }

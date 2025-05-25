@@ -9,127 +9,58 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 // Store MaintenanceNoticeAPI objects internally
 let noticesStore: MaintenanceNoticeAPI[] = [
-  { 
-    id: "1", 
-    noticeType: "M1",
-    shortText: "Mantenimiento Maquina A", 
-    causeText: "Mantenimiento programado para Máquina A, requiere cambio de aceite y reemplazo de filtro. También verificar alineación y tensión de la correa.", 
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(), 
-    status: "Pendiente", 
-    priority: "Media",
-    reporterName: "Operador Juan",
-    equipmentNumber: "EQ-001",
-    functionalLocation: "FL-A1-BAY7",
-    assembly: "ASM-MAINDRIVE-001",
-    requiredStartDate: "2024-07-15",
-    requiredStartTime: "08:00",
-    requiredEndDate: "2024-07-15",
-    requiredEndTime: "12:00",
-    workCenterObjectId: "WC-MECH-01",
-    malfunctionEndDate: "2024-07-10",
-    malfunctionEndTime: "14:30",
-    startPoint: "Sección A",
-    endPoint: "Sección B",
-    length: 100,
-    linearUnit: "MTR",
-    problemCodeGroup: "MECHFAIL",
-    problemCode: "LUBRICATE",
-    objectPartCodeGroup: "BEARINGS",
-    objectPartCode: "BRG-00123",
-    imageUrl: "https://placehold.co/600x400.png",
-    data_ai_hint: "industrial equipment",
-  },
-  { 
-    id: "2", 
-    noticeType: "M2",
-    shortText: "Sensor B2 fuera de línea", 
-    causeText: "Sensor B2 en la línea de producción 3 está fuera de línea. Investigar cableado y suministro de energía inmediatamente. Posible ingreso de agua.", 
-    createdAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-    updatedAt: new Date(Date.now() - 86400000).toISOString(),
-    status: "Pendiente", 
-    priority: "Alta",
-    reporterName: "Operadora Ana",
-    equipmentNumber: "EQ-SENS-002B",
-    functionalLocation: "FL-PL3-CTRL",
-    assembly: "SENSOR-RACK-03",
-    requiredStartDate: "2024-07-14",
-    requiredStartTime: "09:00",
-    workCenterObjectId: "WC-ELEC-02",
-    problemCodeGroup: "ELECFAIL",
-    problemCode: "NOSIGNAL",
-    objectPartCodeGroup: "SENSOR",
-    objectPartCode: "SENS-OPT-004B",
-    imageUrl: "https://placehold.co/600x400.png",
-    data_ai_hint: "sensor error",
-  },
-  { 
-    id: "3", 
-    noticeType: "M3",
-    shortText: "Actualización de Software Desplegada", 
-    causeText: "Software del panel de control v2.5 desplegado exitosamente en todas las unidades HMI de la planta 2. Monitoreando problemas.", 
-    createdAt: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
-    updatedAt: new Date(Date.now() - 172800000).toISOString(),
-    status: "Enviado", 
-    priority: "Baja",
-    reporterName: "Admin de Sistemas",
-    equipmentNumber: "HMI-ALL-P2",
-    functionalLocation: "PLANT2-CTRLRMS",
-    workCenterObjectId: "WC-IT-SOFT",
-    problemCodeGroup: "INFO",
-    problemCode: "UPDATE_OK",
-    imageUrl: "https://placehold.co/600x400.png",
-    data_ai_hint: "software update",
-  },
   {
-    id: "4",
-    noticeType: "M1",
-    shortText: "Fuga en Prensa Hidráulica HP-05",
-    causeText: "Operador reportó fuga menor de fluido hidráulico cerca del cilindro principal de HP-05. Requiere inspección y reemplazo de sellos si es necesario.",
-    createdAt: new Date(Date.now() - 3 * 86400000).toISOString(), // 3 days ago
-    updatedAt: new Date(Date.now() - 2 * 86400000).toISOString(), // updated 2 days ago
-    status: "Enviado",
-    priority: "Media",
-    reporterName: "Operador Miguel",
-    equipmentNumber: "EQ-HYDPRESS-05",
-    functionalLocation: "FL-PRESSSHOP-A3",
-    assembly: "HP05-CYLINDER-MAIN",
-    requiredStartDate: "2024-07-12",
-    requiredStartTime: "10:00",
-    workCenterObjectId: "WC-MECH-HYD",
-    problemCodeGroup: "LEAK",
-    problemCode: "HYDFLUID",
-    objectPartCodeGroup: "SEALS",
-    objectPartCode: "SEAL-HYD-50MM",
-    imageUrl: "https://placehold.co/600x400.png",
-    data_ai_hint: "hydraulic leak",
-  },
-  {
-    id: "5",
-    noticeType: "M2",
-    shortText: "Banda Transportadora C-12 Deslizando",
-    causeText: "Banda transportadora C-12 en área de empaque muestra signos de deslizamiento bajo carga. Necesita ajuste de tensión e inspección del motor de accionamiento.",
-    createdAt: new Date(Date.now() - 4 * 86400000).toISOString(), // 4 days ago
-    updatedAt: new Date(Date.now() - 4 * 86400000).toISOString(),
+    id: "1",
+    tipoAvisoId: 1,
+    equipoId: 10003089,
+    ubicacionTecnicaId: 92201,
+    textoBreve: "Falla en motor principal PMP-01",
+    fechaInicio: new Date(Date.now() - 86400000 * 3).toISOString(), // 3 days ago
+    fechaFin: new Date(Date.now() - 86400000 * 2).toISOString(),   // 2 days ago
+    horaInicio: new Date(Date.now() - 86400000 * 3).toISOString(),
+    horaFin: new Date(Date.now() - 86400000 * 2).toISOString(),
+    puestoTrabajoId: 10001242,
+    parteObjetoId: 5005,
+    createdById: 7007,
     status: "Pendiente",
-    priority: "Alta",
-    reporterName: "Operadora Sara",
-    equipmentNumber: "EQ-CONV-C12",
-    functionalLocation: "FL-PACKAGING-LN1",
-    assembly: "C12-DRIVEUNIT",
-    requiredStartDate: "2024-07-11",
-    requiredStartTime: "08:00",
-    requiredEndDate: "2024-07-11",
-    requiredEndTime: "10:00",
-    workCenterObjectId: "WC-MECH-GEN",
-    malfunctionEndDate: "2024-07-10",
-    malfunctionEndTime: "16:00",
-    problemCodeGroup: "MECHFAIL",
-    problemCode: "SLIPPING",
-    objectPartCodeGroup: "BELT",
-    objectPartCode: "CONVBELT-1200MM",
+    createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+    updatedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
     imageUrl: "https://placehold.co/600x400.png",
-    data_ai_hint: "conveyor belt",
+    data_ai_hint: "motor industrial",
+  },
+  {
+    id: "2",
+    tipoAvisoId: 2,
+    equipoId: 20005050,
+    ubicacionTecnicaId: 92305,
+    textoBreve: "Inspección de rutina Tablero Eléctrico TB-AUX",
+    fechaInicio: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+    fechaFin: new Date().toISOString(),
+    horaInicio: new Date(Date.now() - 86400000).toISOString(),
+    horaFin: new Date().toISOString(),
+    puestoTrabajoId: 10001243,
+    createdById: 7008,
+    status: "Enviado",
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+    updatedAt: new Date().toISOString(),
+    imageUrl: "https://placehold.co/600x400.png",
+    data_ai_hint: "tablero electrico",
+  },
+  {
+    id: "3",
+    tipoAvisoId: 1,
+    equipoId: 10003090,
+    ubicacionTecnicaId: 92202,
+    textoBreve: "Mantenimiento preventivo Bomba B-002",
+    fechaInicio: new Date().toISOString(),
+    fechaFin: new Date(Date.now() + 3600000 * 4).toISOString(), // 4 hours from now
+    horaInicio: new Date().toISOString(),
+    horaFin: new Date(Date.now() + 3600000 * 4).toISOString(),
+    puestoTrabajoId: 10001242,
+    status: "Pendiente",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    // No image for this one
   }
 ];
 
@@ -158,7 +89,7 @@ let sapOrdersStore: SAPOrder[] = [
     {
         orderNumber: "ORD-002",
         orderType: "Mantenimiento Preventivo",
-        notificationNumber: "4", // Matches noticeStore ID for leak
+        notificationNumber: "2", // Matches noticeStore ID
         enteredBy: "SAPUser2",
         createdOn: new Date(Date.now() - 70000000).toISOString(),
         description: "Inspeccionar y sellar Prensa Hidráulica HP-05",
@@ -167,7 +98,7 @@ let sapOrdersStore: SAPOrder[] = [
         equipmentDescription: "Prensa Hidráulica 50 Toneladas",
         functionalLocationLabel: "FL-PRESSSHOP-A3",
         functionalLocationDescription: "Área Taller de Prensas, Bahía 3",
-        mainWorkCenter: "ELEC-TEAM", 
+        mainWorkCenter: "ELEC-TEAM",
         responsiblePersonName: "Ana Gómez",
         assembly: "HP05-CYLINDER-MAIN",
         maintenancePlant: "PLANTA_Y",
@@ -229,7 +160,7 @@ export async function loginUser(formData: FormData): Promise<{ success: boolean;
       }
     }
   }
-  
+
   return { success: false, message: "Nombre de usuario o contraseña inválidos.", error: "Invalid credentials" };
 }
 
@@ -251,82 +182,64 @@ export async function changePassword(userId: string, newPassword: string): Promi
 
 export async function syncFromSAP(): Promise<{ success: boolean; message: string; synchronizedData?: string[]; firebaseLogId?: string }> {
   console.log("Intentando sincronizar datos desde SAP...");
-  await new Promise(resolve => setTimeout(resolve, 2000)); 
-  
+  await new Promise(resolve => setTimeout(resolve, 2000));
+
   const synchronizedTableNames = ["Tabla_Datos_Cliente", "Tabla_Inventario_Producto", "Tabla_Programas_Mantenimiento", "Tabla_Pedidos_SAP_Mock"];
-  
+
   try {
     const docRef = await addDoc(collection(db, "sap_synchronized_tables"), {
       tables: synchronizedTableNames,
       synchronizedAt: serverTimestamp()
     });
     console.log("Datos sincronizados con SAP. Log almacenado en Firebase con ID: ", docRef.id);
-    return { 
-      success: true, 
-      message: "Datos sincronizados exitosamente desde SAP y registrados en Firebase.", 
+    return {
+      success: true,
+      message: "Datos sincronizados exitosamente desde SAP y registrados en Firebase.",
       synchronizedData: synchronizedTableNames,
-      firebaseLogId: docRef.id 
+      firebaseLogId: docRef.id
     };
   } catch (error) {
     console.error("Error al escribir el log de sincronización de SAP en Firebase: ", error);
-    return { 
-      success: false, 
-      message: "Datos sincronizados desde SAP, pero falló el registro en Firebase.", 
-      synchronizedData: synchronizedTableNames 
+    return {
+      success: false,
+      message: "Datos sincronizados desde SAP, pero falló el registro en Firebase.",
+      synchronizedData: synchronizedTableNames
     };
   }
 }
 
 export async function getNotices(): Promise<MaintenanceNoticeAPI[]> {
   await new Promise(resolve => setTimeout(resolve, 500));
+  // Return a deep copy and sort by creation date (newest first)
   return [...noticesStore].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 
 export async function getMaintenanceNoticeByIdForAPI(id: string): Promise<MaintenanceNoticeAPI | undefined> {
     await new Promise(resolve => setTimeout(resolve, 100));
-    return noticesStore.find(notice => notice.id === id);
+    const notice = noticesStore.find(notice => notice.id === id);
+    return notice ? {...notice} : undefined; // Return a copy
 }
 
 
 export async function createMaintenanceNoticeAction(data: CreateMaintenanceNoticeInput): Promise<MaintenanceNoticeAPI> {
     await new Promise(resolve => setTimeout(resolve, 500));
-    const newId = String(Date.now()); 
+    const newId = String(Date.now());
     const now = new Date().toISOString();
+
     const newNotice: MaintenanceNoticeAPI = {
-        ...data,
+        ...data, // Spread validated data from schema
         id: newId,
-        status: "Pendiente", 
+        status: "Pendiente",
         createdAt: now,
         updatedAt: now,
-        shortText: data.shortText, 
-        noticeType: data.shortText.includes("Urgente") ? "M2" : "M1", // Basic logic for notice type
-        equipmentNumber: data.equipmentNumber || undefined,
-        functionalLocation: data.functionalLocation || undefined,
-        assembly: data.assembly || undefined,
-        priority: data.priority || undefined,
-        requiredStartDate: data.requiredStartDate || undefined,
-        requiredStartTime: data.requiredStartTime || undefined,
-        requiredEndDate: data.requiredEndDate || undefined,
-        requiredEndTime: data.requiredEndTime || undefined,
-        workCenterObjectId: data.workCenterObjectId || undefined,
-        malfunctionEndDate: data.malfunctionEndDate || undefined,
-        malfunctionEndTime: data.malfunctionEndTime || undefined,
-        reporterName: data.reporterName || undefined,
-        startPoint: data.startPoint || undefined,
-        endPoint: data.endPoint || undefined,
-        length: data.length || undefined,
-        linearUnit: data.linearUnit || undefined,
-        problemCodeGroup: data.problemCodeGroup || undefined,
-        problemCode: data.problemCode || undefined,
-        objectPartCodeGroup: data.objectPartCodeGroup || undefined,
-        objectPartCode: data.objectPartCode || undefined,
-        causeText: data.causeText || undefined,
-        imageUrl: data.shortText.toLowerCase().includes("sensor") ? "https://placehold.co/600x400.png?text=Sensor+Issue" : "https://placehold.co/600x400.png",
-        data_ai_hint: "new notice"
+        // imageUrl and data_ai_hint can be part of `data` if included in schema and form
+        // or set defaults here
+        imageUrl: data.imageUrl || "https://placehold.co/600x400.png?text=AvisoNuevo",
+        data_ai_hint: data.data_ai_hint || "aviso mantenimiento",
     };
-    noticesStore.unshift(newNotice); 
-    return newNotice;
+    noticesStore.unshift(newNotice);
+    return {...newNotice}; // Return a copy
 }
 
 export async function updateMaintenanceNoticeAction(id: string, data: UpdateMaintenanceNoticeInput): Promise<MaintenanceNoticeAPI | null> {
@@ -341,7 +254,7 @@ export async function updateMaintenanceNoticeAction(id: string, data: UpdateMain
         updatedAt: new Date().toISOString(),
     };
     noticesStore[noticeIndex] = updatedNotice;
-    return updatedNotice;
+    return {...updatedNotice}; // Return a copy
 }
 
 
@@ -349,15 +262,20 @@ export async function sendNoticesToSAP(noticeIds: string[]): Promise<{ success: 
   console.log("Enviando avisos a SAP:", noticeIds);
   await new Promise(resolve => setTimeout(resolve, 1500));
 
+  let noticesUpdatedCount = 0;
   noticesStore = noticesStore.map(notice => {
-    if (noticeIds.includes(notice.id)) {
-      console.log("Enviando aviso a SAP (mock):", notice);
+    if (noticeIds.includes(notice.id) && notice.status === "Pendiente") {
+      console.log("Enviando aviso a SAP (mock):", notice.id, notice.textoBreve);
+      noticesUpdatedCount++;
       return { ...notice, status: "Enviado" as NoticeStatus, updatedAt: new Date().toISOString() };
     }
     return notice;
   });
 
-  return { success: true, message: `${noticeIds.length} aviso(s) enviado(s) a SAP exitosamente.` };
+  if (noticesUpdatedCount === 0) {
+    return { success: false, message: "No se enviaron avisos. Puede que ya estuvieran enviados o no se encontraron." };
+  }
+  return { success: true, message: `${noticesUpdatedCount} aviso(s) enviado(s) a SAP exitosamente.` };
 }
 
 
@@ -378,7 +296,7 @@ export async function addUser(formData: FormData): Promise<{ success: boolean; m
   if (!validationResult.success) {
     return { success: false, message: "Falló la validación", errors: validationResult.error.issues };
   }
-  
+
   const { username, role, workstation } = validationResult.data;
 
   if (users.find(user => user.username === username)) {
@@ -386,7 +304,7 @@ export async function addUser(formData: FormData): Promise<{ success: boolean; m
   }
 
   const newUser: User = {
-    id: String(users.length + 1 + Date.now()), 
+    id: String(users.length + 1 + Date.now()),
     username,
     role: role as UserRole,
     forcePasswordChange: false,
@@ -404,12 +322,12 @@ export async function addUser(formData: FormData): Promise<{ success: boolean; m
     }
     newUser.workstation = workstation;
   }
-  
+
   users.push(newUser);
-  return { 
-    success: true, 
-    message: `Usuario ${username} agregado exitosamente con rol ${role}.${role === 'operator' && workstation ? ` Asignado al puesto de trabajo: ${workstation}.` : ''}`, 
-    generatedPassword: role === "admin" ? generatedPasswordForAdmin : undefined 
+  return {
+    success: true,
+    message: `Usuario ${username} agregado exitosamente con rol ${role}.${role === 'operator' && workstation ? ` Asignado al puesto de trabajo: ${workstation}.` : ''}`,
+    generatedPassword: role === "admin" ? generatedPasswordForAdmin : undefined
   };
 }
 
@@ -424,7 +342,6 @@ export async function deleteUser(userId: string): Promise<{ success: boolean; me
 }
 
 export async function getSAPOrdersAction(): Promise<SAPOrder[]> {
-    await new Promise(resolve => setTimeout(resolve, 500)); 
+    await new Promise(resolve => setTimeout(resolve, 500));
     return [...sapOrdersStore].sort((a,b) => new Date(b.createdOn || 0).getTime() - new Date(a.createdOn || 0).getTime());
 }
-
