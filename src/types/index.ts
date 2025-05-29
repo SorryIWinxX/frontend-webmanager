@@ -1,41 +1,84 @@
-
 export type NoticeStatus = "Pendiente" | "Enviado";
+
+// Interfaces for nested objects
+export interface TipoAviso {
+  id: number;
+  nombre: string;
+  descripcion: string;
+}
+
+export interface Equipo {
+  id: number;
+  numeroEquipo: string;
+  ubicacionTecnica: string;
+  puestoTrabajo: string;
+  perfilCatalogo: string;
+  objetoTecnico: string;
+}
+
+export interface Sensor {
+  id: number;
+  nombre: string;
+}
+
+export interface ParteObjeto {
+  id: number;
+  nombre: string;
+  sensor?: Sensor;
+}
+
+export interface Inspeccion {
+  id: number;
+  catalogo: string;
+  codigo: string;
+  descripcion: string;
+  catalago2: string;
+}
+
+export interface Material {
+  id: number;
+  conjunto: string;
+  description: string;
+}
 
 // Simplified interface for Maintenance Notices for external API integration
 export interface MaintenanceNoticeAPI {
   // Fields from the external API request
-  tipoAvisoId: number;
-  equipoId: number;
-  ubicacionTecnicaId: number;
+  numeroExt?: string | null; // External number from backend
+  tipoAviso: TipoAviso;
+  equipo: Equipo;
+  parteObjeto: ParteObjeto;
   textoBreve: string;
   fechaInicio: string; // ISO Date string (YYYY-MM-DDTHH:mm:ss.sssZ)
   fechaFin: string;   // ISO Date string
   horaInicio: string; // ISO Date string, as per user spec for "receive"
   horaFin: string;    // ISO Date string, as per user spec for "receive"
-  puestoTrabajoId?: number;
-  parteObjetoId?: number;
-  createdById?: number;
+  createdById?: string;
 
   // App-internal fields
   id: string; // Internal app-generated ID
   status: NoticeStatus;
-  createdAt: string; // ISO DateTime string
-  updatedAt: string; // ISO DateTime string
   imageUrl?: string;
-  data_ai_hint?: string;
+  noticeType?: { id?: number | string; nombre?: string; descripcion?: string };
+  reporterName?: string;
+  data_ai_hint?: string; // AI hint for maintenance type
+
+  // Additional fields from backend
+  inspeccion?: Inspeccion;
+  material?: Material;
 }
-
-
-export type UserRole = "admin" | "operator";
 
 export interface User {
   id: string;
-  username: string; // Cedula for operators
-  role: UserRole;
-  password?: string; // Optional, not used by operators
-  forcePasswordChange: boolean; // Mainly for new admins
-  workstation?: string; // For operators
-  generatedPassword?: string; // Temporarily store generated password for display (admins)
+  username: string; 
+  password?: string; 
+}
+
+// New Reporter interface for the reporter-user API
+export interface Reporter {
+  id: string;
+  cedula: string;
+  puestoTrabajo: number;
 }
 
 // New type for SAP Orders to be exposed via API

@@ -24,7 +24,7 @@ export function Header() {
         </div>
         {currentUser && (
           <div className="flex items-center justify-end gap-2">
-            <span className="text-sm hidden sm:inline">Bienvenido, {currentUser.username} ({currentUser.role})</span>
+            <span className="text-sm hidden sm:inline">Bienvenido, {currentUser.username} ({currentUser.id})</span>
             <Button variant="ghost" size="sm" onClick={logout} className="text-primary-foreground hover:bg-primary/80 hover:text-primary-foreground">
               <LogOut className="mr-1 h-4 w-4" />
               Salir

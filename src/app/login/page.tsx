@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useTransition } from 'react';
@@ -11,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, LogIn } from 'lucide-react';
+import wytechLogo from '../../../public/logos/wytech.png';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -54,11 +54,12 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <div className="flex justify-center items-center mb-4">
             <Image 
-              src="/logos/wytech.png" 
+              src={wytechLogo} 
               alt="Company Logo" 
               width={200} 
               height={80} 
               data-ai-hint="app logo" 
+              style={{ width: 'auto', height: 'auto' }} 
             />
           </div>
           <CardTitle className="text-3xl font-bold text-primary">App de mantenimiento</CardTitle>
@@ -67,11 +68,11 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="username">Usuario Admin</Label>
+              <Label htmlFor="username">Usuario</Label>
               <Input
                 id="username"
                 type="text"
-                placeholder="Ingrese su Cédula o Usuario Admin"
+                placeholder="Ingrese su usuario"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -84,10 +85,10 @@ export default function LoginPage() {
               <Input
                 id="password"
                 type="password"
-                placeholder="Ingrese su contraseña (si es Admin)"
+                placeholder="Ingrese su contraseña"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                // Not strictly required on client as backend handles it
+                required
                 disabled={isLoading}
                 className="text-base"
               />

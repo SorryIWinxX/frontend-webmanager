@@ -1,133 +1,9 @@
-
 "use server";
 
-import type { User, UserRole, MaintenanceNoticeAPI, SAPOrder, NoticeStatus } from "@/types";
-import { CreateMaintenanceNoticeInput, UpdateMaintenanceNoticeInput } from "@/lib/schemas";
-import { z } from "zod";
+import type { User, Reporter } from "@/types";
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
-// Store MaintenanceNoticeAPI objects internally
-let noticesStore: MaintenanceNoticeAPI[] = [
-  {
-    id: "1",
-    tipoAvisoId: 1,
-    equipoId: 10003089,
-    ubicacionTecnicaId: 92201,
-    textoBreve: "Falla en motor principal PMP-01",
-    fechaInicio: new Date(Date.now() - 86400000 * 3).toISOString(), // 3 days ago
-    fechaFin: new Date(Date.now() - 86400000 * 2).toISOString(),   // 2 days ago
-    horaInicio: new Date(Date.now() - 86400000 * 3).toISOString(),
-    horaFin: new Date(Date.now() - 86400000 * 2).toISOString(),
-    puestoTrabajoId: 10001242,
-    parteObjetoId: 5005,
-    createdById: 7007,
-    status: "Pendiente",
-    createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-    imageUrl: "https://placehold.co/600x400.png",
-    data_ai_hint: "motor industrial",
-    noticeType: "M1",
-    reporterName: "Operador Planta",
-  },
-  {
-    id: "2",
-    tipoAvisoId: 2,
-    equipoId: 20005050,
-    ubicacionTecnicaId: 92305,
-    textoBreve: "Inspección de rutina Tablero Eléctrico TB-AUX",
-    fechaInicio: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-    fechaFin: new Date().toISOString(),
-    horaInicio: new Date(Date.now() - 86400000).toISOString(),
-    horaFin: new Date().toISOString(),
-    puestoTrabajoId: 10001243,
-    createdById: 7008,
-    status: "Enviado",
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date().toISOString(),
-    imageUrl: "https://placehold.co/600x400.png",
-    data_ai_hint: "tablero electrico",
-    noticeType: "M2",
-    reporterName: "Supervisor Eléctrico",
-  },
-  {
-    id: "3",
-    tipoAvisoId: 1,
-    equipoId: 10003090,
-    ubicacionTecnicaId: 92202,
-    textoBreve: "Mantenimiento preventivo Bomba B-002",
-    fechaInicio: new Date().toISOString(),
-    fechaFin: new Date(Date.now() + 3600000 * 4).toISOString(), // 4 hours from now
-    horaInicio: new Date().toISOString(),
-    horaFin: new Date(Date.now() + 3600000 * 4).toISOString(),
-    puestoTrabajoId: 10001242,
-    status: "Pendiente",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    noticeType: "M1",
-    reporterName: "Técnico Mecánico",
-    // No image for this one
-  }
-];
-
-let sapOrdersStore: SAPOrder[] = [
-    {
-        orderNumber: "ORD-001",
-        orderType: "Mantenimiento Correctivo",
-        notificationNumber: "1", // Matches noticeStore ID
-        enteredBy: "SAPUser1",
-        createdOn: new Date(Date.now() - 80000000).toISOString(),
-        description: "Reparar Máquina A después de avería",
-        priority: "Alta",
-        equipmentNumber: "EQ-001",
-        equipmentDescription: "Máquina Principal de Producción Alpha",
-        functionalLocationLabel: "FL-A1-BAY7",
-        functionalLocationDescription: "Área de Producción 1, Bahía 7",
-        mainWorkCenter: "MECH-TEAM",
-        responsiblePersonName: "Juan Pérez",
-        assembly: "ASM-MAINDRIVE-001",
-        maintenancePlant: "PLANTA_X",
-        plannerGroup: "PG-MECH",
-        planningPlant: "PLANTA_X",
-        workCenter: "MECH-01",
-        activityType: "REPARAR"
-    },
-    {
-        orderNumber: "ORD-002",
-        orderType: "Mantenimiento Preventivo",
-        notificationNumber: "2", // Matches noticeStore ID
-        enteredBy: "SAPUser2",
-        createdOn: new Date(Date.now() - 70000000).toISOString(),
-        description: "Inspeccionar y sellar Prensa Hidráulica HP-05",
-        priority: "Media",
-        equipmentNumber: "EQ-HYDPRESS-05",
-        equipmentDescription: "Prensa Hidráulica 50 Toneladas",
-        functionalLocationLabel: "FL-PRESSSHOP-A3",
-        functionalLocationDescription: "Área Taller de Prensas, Bahía 3",
-        mainWorkCenter: "ELEC-TEAM",
-        responsiblePersonName: "Ana Gómez",
-        assembly: "HP05-CYLINDER-MAIN",
-        maintenancePlant: "PLANTA_Y",
-        plannerGroup: "PG-HYD",
-        planningPlant: "PLANTA_Y",
-        workCenter: "MECH-HYD-01",
-        activityType: "INSPECCIONAR"
-    }
-];
-
-let users: User[] = [
-  { id: "1", username: "admin", role: "admin", password: "123", forcePasswordChange: false },
-  { id: "2", username: "op123", role: "operator", workstation: "Línea de Ensamblaje 1", forcePasswordChange: false, password: "" }, // Operators don't use password field for login
-  { id: "3", username: "newadmin", role: "admin", password: "changeme", forcePasswordChange: true },
-];
-
-
-const UserFormValidationSchema = z.object({
-  username: z.string().min(3, "El nombre de usuario debe tener al menos 3 caracteres (Cédula para operadores)"),
-  role: z.enum(["admin", "operator"]),
-  workstation: z.string().optional(),
-  password: z.string().optional(),
-});
 
 
 export async function loginUser(formData: FormData): Promise<{ success: boolean; message: string; user?: User; error?: string }> {
@@ -135,51 +11,62 @@ export async function loginUser(formData: FormData): Promise<{ success: boolean;
   const password = formData.get("password") as string;
 
   if (!username) {
-    return { success: false, message: "El nombre de usuario (Cédula) es requerido.", error: "Missing username" };
+    return { success: false, message: "El nombre de usuario es requerido.", error: "Missing username" };
   }
 
-  const user = users.find(u => u.username.toLowerCase() === username.toLowerCase());
-
-  if (!user) {
-    return { success: false, message: "Usuario no encontrado.", error: "User not found" };
+  if (!password) {
+    return { success: false, message: "La contraseña es requerida.", error: "Missing password" };
   }
 
-  if (user.role === "admin") {
-    if (!password) {
-      return { success: false, message: "La contraseña es requerida para administradores.", error: "Missing password for admin" };
+  const backendUrl = process.env.BACKEND_API_BASE_URL;
+  if (!backendUrl) {
+    return { success: false, message: "Error de configuración del servidor.", error: "Backend URL not configured" };
+  }
+
+  try {
+    const response = await fetch(`${backendUrl}/master-user/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username,
+        password
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return { 
+        success: false, 
+        message: errorData.message || "Credenciales incorrectas", 
+        error: `HTTP ${response.status}` 
+      };
     }
-    if (user.password !== password) {
-      return { success: false, message: "Contraseña incorrecta para administrador.", error: "Invalid admin password" };
-    }
-  }
-  // For operators, only username (cédula) is checked.
 
-  // Return a copy of the user object without the password for security, even in mocks
-  const { password: _, ...userToReturn } = user;
-  return { success: true, message: "Inicio de sesión exitoso", user: userToReturn };
+    const data = await response.json();
+    
+    // Mapear la respuesta del backend al formato esperado por el frontend
+    const user: User = {
+      id: data.id.toString(),
+      username: data.username,
+    };
+
+    return { success: true, message: data.message || "Inicio de sesión exitoso", user };
+  } catch (error) {
+    console.error('Error en login:', error);
+    return { success: false, message: "Error de conexión con el servidor.", error: "Network error" };
+  }
 }
 
 
-export async function changePassword(userId: string, newPassword: string): Promise<{ success: boolean; message: string }> {
-  const userIndex = users.findIndex(u => u.id === userId);
-  if (userIndex === -1) {
-    return { success: false, message: "Usuario no encontrado." };
-  }
-  if (users[userIndex].role !== 'admin') {
-      return { success: false, message: "Solo los administradores pueden cambiar la contraseña de esta manera." };
-  }
 
-  users[userIndex].password = newPassword;
-  users[userIndex].forcePasswordChange = false;
-  
-  return { success: true, message: "Contraseña cambiada exitosamente." };
-}
 
 
 export async function syncFromSAP(): Promise<{ success: boolean; message: string; synchronizedData?: string[]; firebaseLogId?: string }> {
-  const externalSapApiUrl = process.env.EXTERNAL_API_BASE_URL; 
+  const externalSapApiUrl = process.env.BACKEND_API_BASE_URL; 
   // if (!externalSapApiUrl) {
-  //   console.error("Error: EXTERNAL_API_BASE_URL para SAP no está configurada.");
+  //   console.error("Error: BACKEND_API_BASE_URL para SAP no está configurada.");
   //   return { success: false, message: "Configuración de API externa para SAP incompleta." };
   // }
   // console.log(`Intentando sincronizar datos desde SAP usando la URL base: ${externalSapApiUrl}`);
@@ -213,161 +100,222 @@ export async function syncFromSAP(): Promise<{ success: boolean; message: string
   }
 }
 
-export async function getNotices(): Promise<MaintenanceNoticeAPI[]> {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return [...noticesStore].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+export async function syncTablesFromSAP(): Promise<any> {
+  const backendUrl = process.env.BACKEND_API_BASE_URL;
+  if (!backendUrl) {
+    return { success: false, message: "Error de configuración del servidor.", error: "Backend URL not configured" };
+  }
+  try {
+    const response = await fetch(`${backendUrl}/sap/sincronizar-tablas`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error syncing tables from SAP:', error);
+    return { success: false, message: "Error de conexión con el servidor.", error: "Network error" };
+  }
 }
 
 
-export async function getMaintenanceNoticeByIdForAPI(id: string): Promise<MaintenanceNoticeAPI | undefined> {
-    await new Promise(resolve => setTimeout(resolve, 100));
-    const notice = noticesStore.find(notice => notice.id === id);
-    return notice ? {...notice} : undefined;
-}
 
 
-export async function createMaintenanceNoticeAction(data: CreateMaintenanceNoticeInput): Promise<MaintenanceNoticeAPI> {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const newId = String(Date.now() + Math.random()); 
-    const now = new Date().toISOString();
 
-    const newNotice: MaintenanceNoticeAPI = {
-        ...data, 
-        id: newId,
-        status: "Pendiente",
-        createdAt: now,
-        updatedAt: now,
-        imageUrl: data.imageUrl || undefined,
-        data_ai_hint: data.data_ai_hint || undefined,
-        noticeType: data.noticeType || "M1", 
-        reporterName: data.reporterName || "Sistema",
-    };
-    noticesStore.unshift(newNotice); 
-    return {...newNotice};
-}
 
-export async function updateMaintenanceNoticeAction(id: string, data: UpdateMaintenanceNoticeInput): Promise<MaintenanceNoticeAPI | null> {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const noticeIndex = noticesStore.findIndex(notice => notice.id === id);
-    if (noticeIndex === -1) {
-        return null;
+
+
+
+
+
+
+// Reporter API functions
+export async function getReporters(): Promise<Reporter[]> {
+  const backendUrl = process.env.BACKEND_API_BASE_URL;
+  if (!backendUrl) {
+    throw new Error("Backend URL not configured");
+  }
+
+  try {
+    const response = await fetch(`${backendUrl}/reporter-user`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: Failed to fetch reporters`);
     }
-    const updatedNotice = {
-        ...noticesStore[noticeIndex],
-        ...data,
-        updatedAt: new Date().toISOString(),
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching reporters:', error);
+    throw error;
+  }
+}
+
+export async function addReporter(formData: FormData): Promise<{ success: boolean; message: string; reporter?: Reporter; errors?: Array<{ path: string[]; message: string }> }> {
+  const cedula = formData.get("cedula") as string;
+  const puestoTrabajo = formData.get("puestoTrabajo") as string;
+
+  if (!cedula) {
+    return { 
+      success: false, 
+      message: "La cédula es requerida.",
+      errors: [{ path: ["cedula"], message: "La cédula es requerida." }]
     };
-    noticesStore[noticeIndex] = updatedNotice;
-    return {...updatedNotice};
-}
+  }
 
+  if (!puestoTrabajo) {
+    return { 
+      success: false, 
+      message: "El puesto de trabajo es requerido.",
+      errors: [{ path: ["puestoTrabajo"], message: "El puesto de trabajo es requerido." }]
+    };
+  }
 
-export async function sendNoticesToSAP(noticeIds: string[]): Promise<{ success: boolean; message: string }> {
-  // const externalSapApiUrl = process.env.EXTERNAL_API_BASE_URL;
-  // if (!externalSapApiUrl) {
-  //   console.error("Error: EXTERNAL_API_BASE_URL para SAP no está configurada.");
-  //   return { success: false, message: "Configuración de API externa para SAP incompleta." };
-  // }
+  const backendUrl = process.env.BACKEND_API_BASE_URL;
+  if (!backendUrl) {
+    return { success: false, message: "Error de configuración del servidor." };
+  }
 
-  console.log("Enviando avisos a SAP (simulado con mock data):", noticeIds);
-  
-  await new Promise(resolve => setTimeout(resolve, 1500));
+  try {
+    const response = await fetch(`${backendUrl}/reporter-user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        cedula,
+        puestoTrabajo: parseInt(puestoTrabajo, 10)
+      })
+    });
 
-  let noticesUpdatedCount = 0;
-  noticesStore = noticesStore.map(notice => {
-    if (noticeIds.includes(notice.id) && notice.status === "Pendiente") {
-      console.log("Simulando envío de aviso a SAP:", notice.id, notice.textoBreve);
-      noticesUpdatedCount++;
-      return { ...notice, status: "Enviado" as NoticeStatus, updatedAt: new Date().toISOString() };
+    if (!response.ok) {
+      const errorData = await response.json();
+      return { 
+        success: false, 
+        message: errorData.message || "Error al crear el reportero" 
+      };
     }
-    return notice;
-  });
 
-  if (noticesUpdatedCount === 0) {
-    return { success: false, message: "No se enviaron avisos. Puede que ya estuvieran enviados o no se encontraron." };
+    const data = await response.json();
+    
+    const reporter: Reporter = {
+      id: data.id.toString(),
+      cedula: data.cedula,
+      puestoTrabajo: data.puestoTrabajo,
+    };
+
+    return { success: true, message: "Reportero creado exitosamente", reporter };
+  } catch (error) {
+    console.error('Error creating reporter:', error);
+    return { success: false, message: "Error de conexión con el servidor." };
   }
-  return { success: true, message: `${noticesUpdatedCount} aviso(s) enviado(s) a SAP exitosamente (simulado).` };
 }
 
+export async function deleteReporter(reporterId: string): Promise<{ success: boolean; message: string }> {
+  const backendUrl = process.env.BACKEND_API_BASE_URL;
+  if (!backendUrl) {
+    return { success: false, message: "Error de configuración del servidor." };
+  }
 
-export async function getUsers(): Promise<User[]> {
-  await new Promise(resolve => setTimeout(resolve, 100)); // Simulate async
-  // Return copies of user objects without passwords for security
-  return users.map(u => {
-    const { password, ...userWithoutPassword } = u;
-    return userWithoutPassword;
-  });
+  try {
+    const response = await fetch(`${backendUrl}/reporter-user/${reporterId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return { 
+        success: false, 
+        message: errorData.message || "Error al eliminar el reportero" 
+      };
+    }
+
+    return { success: true, message: "Reportero eliminado exitosamente" };
+  } catch (error) {
+    console.error('Error deleting reporter:', error);
+    return { success: false, message: "Error de conexión con el servidor." };
+  }
 }
 
-export async function addUser(formData: FormData): Promise<{ success: boolean; message: string; errors?: z.ZodIssue[]; user?: User }> {
-  const rawFormData = {
-    username: formData.get('username') as string,
-    role: formData.get('role') as UserRole,
-    workstation: formData.get('workstation') as string | undefined,
-    password: formData.get('password') as string | undefined,
-  };
-
-  const validationResult = UserFormValidationSchema.safeParse(rawFormData);
-
-  if (!validationResult.success) {
-    return { success: false, message: "Falló la validación", errors: validationResult.error.issues };
+// Maintenance Notices API functions
+export async function getMaintenanceNotices(): Promise<{ success: boolean; message: string; notices?: any[]; error?: string }> {
+  const backendUrl = process.env.BACKEND_API_BASE_URL;
+  if (!backendUrl) {
+    return { success: false, message: "Error de configuración del servidor.", error: "Backend URL not configured" };
   }
 
-  const { username, role, workstation, password } = validationResult.data;
+  try {
+    const response = await fetch(`${backendUrl}/avisos-mantenimiento`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
-  if (users.find(u => u.username.toLowerCase() === username.toLowerCase())) {
-    return { success: false, message: `El usuario "${username}" ya existe.` };
+    if (!response.ok) {
+      const errorData = await response.json();
+      return { 
+        success: false, 
+        message: errorData.message || "Error al obtener avisos de mantenimiento", 
+        error: `HTTP ${response.status}` 
+      };
+    }
+
+    const data = await response.json();
+    return { success: true, message: "Avisos obtenidos exitosamente", notices: data };
+  } catch (error) {
+    console.error('Error fetching maintenance notices:', error);
+    return { success: false, message: "Error de conexión con el servidor.", error: "Network error" };
   }
-  
-  if (role === "operator" && !workstation) {
-       return { success: false, message: "El puesto de trabajo es requerido para el rol de operador." };
-  }
-
-
-  const newUser: User = {
-    id: String(Date.now() + Math.random()), // Simple unique ID for mock
-    username,
-    role,
-    forcePasswordChange: role === "admin" ? !!password : false, // Admins created with password must change it
-    password: role === "admin" ? (password || "password123") : "", // Store password for admin, empty for operator
-  };
-  if (role === "operator" && workstation) {
-    newUser.workstation = workstation;
-  }
-  
-  users.push(newUser);
-  
-  const { password: _, ...userToReturn } = newUser; // Don't return password
-  
-  let message = `Usuario ${username} agregado exitosamente.`;
-  if (role === "admin" && newUser.forcePasswordChange) {
-      message += ` El administrador deberá cambiar su contraseña ("${newUser.password}") al iniciar sesión.`;
-  }
-
-
-  return {
-    success: true,
-    message: message,
-    user: userToReturn
-  };
 }
 
-
-export async function deleteUser(userId: string): Promise<{ success: boolean; message: string }> {
-  const userIndex = users.findIndex(u => u.id === userId);
-  if (userIndex === -1) {
-    return { success: false, message: "Usuario no encontrado." };
-  }
-  // Basic protection for the primary admin in mock
-  if (users[userIndex].username.toLowerCase() === 'admin' && users[userIndex].id === '1') { 
-      return { success: false, message: "No se puede eliminar el usuario administrador principal (simulado)." };
+export async function sendMaintenanceNoticesToSAP(avisoIds: number[]): Promise<{ success: boolean; message: string; error?: string }> {
+  const backendUrl = process.env.BACKEND_API_BASE_URL;
+  if (!backendUrl) {
+    return { success: false, message: "Error de configuración del servidor.", error: "Backend URL not configured" };
   }
 
-  users.splice(userIndex, 1);
-  return { success: true, message: "Usuario eliminado exitosamente." };
-}
+  if (!avisoIds || avisoIds.length === 0) {
+    return { success: false, message: "No se proporcionaron avisos para enviar.", error: "Empty avisoIds array" };
+  }
 
-export async function getSAPOrdersAction(): Promise<SAPOrder[]> {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return [...sapOrdersStore].sort((a,b) => new Date(b.createdOn || 0).getTime() - new Date(a.createdOn || 0).getTime());
+  try {
+    const response = await fetch(`${backendUrl}/sap/enviar-aviso-mantenimiento`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ids: avisoIds
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return { 
+        success: false, 
+        message: errorData.message || "Error al enviar avisos a SAP", 
+        error: `HTTP ${response.status}` 
+      };
+    }
+
+    const data = await response.json();
+    return { 
+      success: true, 
+      message: data.message || `${avisoIds.length} avisos enviados a SAP exitosamente` 
+    };
+  } catch (error) {
+    console.error('Error sending maintenance notices to SAP:', error);
+    return { success: false, message: "Error de conexión con el servidor.", error: "Network error" };
+  }
 }

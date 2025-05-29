@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useTransition, Fragment } from 'react';
@@ -11,11 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { getNotices, sendNoticesToSAP } from '@/app/actions';
 import type { MaintenanceNoticeAPI, NoticeStatus } from '@/types';
-import { Loader2, Send, ListChecks, AlertTriangle, CheckCircle, Eye, ImageOff, ChevronLeft, ChevronRight, Info, UserCircle, CalendarDays, Clock, Tag, Hash, Edit, Settings, HelpCircle, Briefcase } from 'lucide-react';
+import { getMaintenanceNotices, sendMaintenanceNoticesToSAP } from '@/app/actions';
+import { Loader2, Send, ListChecks, AlertTriangle, CheckCircle, Eye, ImageOff, ChevronLeft, ChevronRight, Info, UserCircle, CalendarDays, Clock, Tag, Hash, Edit, Settings, HelpCircle, Briefcase, MapPin, Wrench, AlertCircle, User, FileText, Calendar, Activity } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { Textarea } from './ui/textarea';
 
 const ITEMS_PER_PAGE = 5;
 
@@ -69,10 +69,64 @@ export function NoticesTab() {
   const fetchNoticesData = () => {
     startLoadingNotices(async () => {
       try {
-        const fetchedNotices = await getNotices();
-        setNotices(fetchedNotices);
-        setPendingCurrentPage(1);
-        setProcessedCurrentPage(1);
+        const result = await getMaintenanceNotices();
+        
+        if (!result.success) {
+          throw new Error(result.message);
+        }
+        
+        const data = result.notices || [];
+        
+        // Mapear los datos del backend al formato esperado por el componente
+        const mappedNotices: MaintenanceNoticeAPI[] = data.map((notice: any) => ({
+          id: notice.id.toString(),
+          numeroExt: notice.numeroExt,
+          tipoAviso: notice.tipoAviso || { id: 0, nombre: '', descripcion: '' },
+          equipo: notice.equipo || { 
+            id: 0, 
+            numeroEquipo: '', 
+            ubicacionTecnica: '', 
+            puestoTrabajo: '', 
+            perfilCatalogo: '', 
+            objetoTecnico: '' 
+          },
+          parteObjeto: notice.parteObjeto || { 
+            id: 0, 
+            nombre: '', 
+            sensor: {
+              id: 0,
+              nombre: ''
+              }
+          },
+          textoBreve: notice.textoBreve || '',
+          fechaInicio: notice.fechaInicio,
+          fechaFin: notice.fechaFin,
+          horaInicio: notice.horaInicio,
+          horaFin: notice.horaFin,
+          status: notice.estado === 'pendiente' ? 'Pendiente' : 'Enviado',
+          imageUrl: "https://motos.espirituracer.com/archivos/2018/10/Yamaha-YZF-R1-6.png", // Imagen de ejemplo
+          data_ai_hint: notice.parteObjeto?.sensor?.nombre || 'mantenimiento',
+          reporterName: notice.reporterUser?.cedula || '',
+          noticeType: notice.tipoAviso ? {
+            id: notice.tipoAviso.id,
+            nombre: notice.tipoAviso.nombre,
+            descripcion: notice.tipoAviso.descripcion
+          } : undefined,
+          inspeccion: notice.inspeccion ? {
+            id: notice.inspeccion.id,
+            catalogo: notice.inspeccion.catalogo,
+            codigo: notice.inspeccion.codigo,
+            descripcion: notice.inspeccion.descripcion,
+            catalago2: notice.inspeccion.catalago2
+          } : undefined,
+          material: notice.material ? {
+            id: notice.material.id,
+            conjunto: notice.material.conjunto,
+            description: notice.material.description
+          } : undefined
+        }));
+        
+        setNotices(mappedNotices);
       } catch (e) {
         toast({
           title: "Error al cargar avisos",
@@ -117,16 +171,21 @@ export function NoticesTab() {
 
     startSending(async () => {
       try {
-        const result = await sendNoticesToSAP(noticesToSend);
-        toast({
-          title: result.success ? "Avisos Enviados" : "Envío Fallido",
-          description: result.message,
-          variant: result.success ? "default" : "destructive",
-        });
-        if (result.success) {
-          fetchNoticesData();
-          setSelectedNotices([]);
+        const avisoIds = noticesToSend.map(id => parseInt(id));
+        const result = await sendMaintenanceNoticesToSAP(avisoIds);
+        
+        if (!result.success) {
+          throw new Error(result.message);
         }
+        
+        toast({
+          title: "Avisos Enviados",
+          description: result.message,
+          variant: "default",
+        });
+        
+        fetchNoticesData();
+        setSelectedNotices([]);
       } catch (e) {
         toast({
           title: "Error al enviar avisos",
@@ -143,8 +202,6 @@ export function NoticesTab() {
         return "destructive";
       case "Enviado":
         return "default";
-      case "Fallido":
-        return "outline";
       default:
         return "secondary";
     }
@@ -212,7 +269,7 @@ export function NoticesTab() {
                   <TableHeader>
                     <TableRow>
                       {isPendingTable && (
-                        <TableHead className="w-[50px]">
+                        <TableHead className="w-[40px]">
                           <Checkbox
                             checked={isAllCurrentPageSelected || (isIndeterminateCurrentPage ? "indeterminate" : false)}
                             onCheckedChange={handleSelectAllForCurrentPage}
@@ -221,13 +278,13 @@ export function NoticesTab() {
                           />
                         </TableHead>
                       )}
-                      <TableHead className="w-[80px]">Imagen</TableHead>
-                      <TableHead>Texto Breve</TableHead>
-                      <TableHead className="hidden lg:table-cell">Equipo ID</TableHead>
-                      <TableHead className="hidden md:table-cell">Ubic. Técnica ID</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead className="hidden md:table-cell">Creado el</TableHead>
-                      <TableHead className="text-right">Detalles</TableHead>
+                      <TableHead className="w-[60px]">Imagen</TableHead>
+                      <TableHead className="min-w-[200px]">Texto Breve</TableHead>
+                      <TableHead className="hidden md:table-cell">Equipo</TableHead>
+                      <TableHead className="hidden lg:table-cell">Ubicación</TableHead>
+                      <TableHead className="w-[100px]">Estado</TableHead>
+                      <TableHead className="hidden sm:table-cell w-[120px]">Fecha Inicio</TableHead>
+                      <TableHead className="w-[50px] text-right">Detalles</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -247,29 +304,49 @@ export function NoticesTab() {
                             <Image
                               src={notice.imageUrl}
                               alt={notice.textoBreve}
-                              width={60}
-                              height={40}
+                              width={50}
+                              height={35}
                               className="rounded object-cover"
-                              data-ai-hint={notice.data_ai_hint || "mantenimiento"}
+                              unoptimized
                             />
                           ) : (
-                            <div className="w-[60px] h-[40px] bg-muted rounded flex items-center justify-center">
-                              <ImageOff className="h-5 w-5 text-muted-foreground" />
+                            <div className="w-[50px] h-[35px] bg-muted rounded flex items-center justify-center">
+                              <ImageOff className="h-4 w-4 text-muted-foreground" />
                             </div>
                           )}
                         </TableCell>
-                        <TableCell id={`notice-title-${notice.id}`} className="font-medium max-w-xs truncate">{notice.textoBreve}</TableCell>
-                        <TableCell className="hidden lg:table-cell max-w-[150px] truncate">{notice.equipoId}</TableCell>
-                        <TableCell className="hidden md:table-cell max-w-[150px] truncate">{notice.ubicacionTecnicaId}</TableCell>
                         <TableCell>
-                          <Badge variant={getStatusBadgeVariant(notice.status)} className="shadow-sm">
+                          <div className="space-y-1">
+                            <p id={`notice-title-${notice.id}`} className="font-medium truncate max-w-[200px]">{notice.textoBreve}</p>
+                            <div className="flex items-center text-xs text-muted-foreground md:hidden">
+                  
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <div className="flex items-center space-x-1">
+                            <span className="truncate max-w-[150px]">{notice.equipo.numeroEquipo}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          <div className="flex items-center space-x-1">
+                            <span className="truncate max-w-[150px]">{notice.equipo.ubicacionTecnica}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={getStatusBadgeVariant(notice.status)} className="shadow-sm whitespace-nowrap">
                             {notice.status}
                           </Badge>
                         </TableCell>
-                        <TableCell className="hidden md:table-cell">{format(new Date(notice.createdAt), "PP", { locale: es })}</TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <div className="flex items-center space-x-1 text-sm">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            <span>{formatDate(notice.fechaInicio, 'dd/MM/yy')}</span>
+                          </div>
+                        </TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="icon" onClick={() => openDetailDialog(notice)}>
-                            <Eye className="h-5 w-5" />
+                            <Eye className="h-4 w-4" />
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -374,65 +451,276 @@ export function NoticesTab() {
 
       {selectedNoticeDetail && (
         <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-          <DialogContent className="sm:max-w-lg md:max-w-xl lg:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle className="text-2xl">{selectedNoticeDetail.textoBreve}</DialogTitle>
-              <DialogDescription className="flex items-center gap-2">
-                ID Interno: <Badge variant="outline">{selectedNoticeDetail.id}</Badge> |
-                Estado: <Badge variant={getStatusBadgeVariant(selectedNoticeDetail.status)}>{selectedNoticeDetail.status}</Badge>
+          <DialogContent className="sm:max-w-3xl md:max-w-4xl lg:max-w-5xl max-h-[90vh]">
+            <DialogHeader className="pb-3">
+              <DialogTitle className="text-xl font-bold text-primary">
+                Aviso de Mantenimiento
+                <Badge variant="secondary" className="ml-2 font-mono text-xs">
+                  {selectedNoticeDetail.numeroExt || selectedNoticeDetail.id}
+                </Badge>
+              </DialogTitle>
+              <DialogDescription className="flex items-center gap-4 text-sm mt-2">
+                <span className="bg-muted/50 px-2 py-1 rounded text-xs">
+                  ID: <code className="font-mono">{selectedNoticeDetail.id}</code>
+                </span>
+                <span>
+                  Estado: <Badge variant={getStatusBadgeVariant(selectedNoticeDetail.status)} className="text-xs">{selectedNoticeDetail.status}</Badge>
+                </span>
               </DialogDescription>
             </DialogHeader>
-            <ScrollArea className="max-h-[60vh] p-1 pr-4">
-              <div className="grid gap-y-3 py-4">
+            
+            <ScrollArea className="max-h-[70vh]">
+              <div className="space-y-4 pr-4">
 
-                {selectedNoticeDetail.imageUrl && (
-                  <div className="relative w-full h-64 md:h-80 rounded-md overflow-hidden border my-2">
-                    <Image
-                        src={selectedNoticeDetail.imageUrl}
-                        alt={selectedNoticeDetail.textoBreve}
-                        fill
-                        style={{objectFit: "contain"}}
-                        data-ai-hint={selectedNoticeDetail.data_ai_hint || "detalle mantenimiento"}
-                    />
+                 {/* Imagen si está disponible */}
+                 {selectedNoticeDetail.imageUrl && (
+                  <div className="p-4 border">
+                    <h3 className="font-bold text-lg mb-3 border-b pb-2">
+                      Imagen adjunta
+                    </h3>
+                    <div className="relative w-full h-48 md:h-64 border">
+                      <Image
+                          src={selectedNoticeDetail.imageUrl}
+                          alt={selectedNoticeDetail.textoBreve}
+                          fill
+                          style={{objectFit: "contain"}}
+                          className="bg-white"
+                      />
+                    </div>
                   </div>
                 )}
 
-                <h3 className="font-semibold text-lg mb-1 border-b pb-1 text-primary">Información Principal (API)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                  <DetailItem icon={Tag} label="Tipo Aviso ID" value={selectedNoticeDetail.tipoAvisoId} placeholder="N/A" />
-                  <DetailItem icon={Settings} label="Equipo ID" value={selectedNoticeDetail.equipoId} placeholder="N/A" />
-                  <DetailItem icon={Briefcase} label="Ubicación Técnica ID" value={selectedNoticeDetail.ubicacionTecnicaId} placeholder="N/A" />
-                  <DetailItem icon={Info} label="Puesto Trabajo ID" value={selectedNoticeDetail.puestoTrabajoId} placeholder="N/A" />
-                  <DetailItem icon={Edit} label="Parte Objeto ID" value={selectedNoticeDetail.parteObjetoId} placeholder="N/A" />
-                  <DetailItem icon={UserCircle} label="Creado Por ID (API)" value={selectedNoticeDetail.createdById} placeholder="N/A" />
+                {/* Objeto de referencia */}
+                <div className="p-4 border">
+                  <h3 className="font-bold text-lg mb-3 pb-2 border-b-2 border-yellow-500">
+                    Objeto de referencia
+                  </h3>
+                  <div className="border border-gray-300">
+                    <table className="w-full">
+                      <tbody>
+                        <tr className="border-b border-gray-300">
+                          <td className="w-32 p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
+                            Ubic. Técnica
+                          </td>
+                          <td colSpan={3} className="p-2 font-mono text-sm bg-white text-center">
+                            {selectedNoticeDetail.equipo.ubicacionTecnica || "Sin información"}
+                          </td>
+                          <td colSpan={3} className="p-2 border-l border-gray-300 font-mono text-sm bg-white text-center">
+                            {selectedNoticeDetail.equipo.numeroEquipo || "Sin información"}
+                          </td> 
+                        </tr>
+                        <tr>
+                          <td className="p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
+                            Equipo
+                          </td>
+                          <td colSpan={3} className="p-2 font-mono text-sm bg-white text-center">
+                            {selectedNoticeDetail.equipo.numeroEquipo || "Sin información"}
+                          </td>
+                          <td colSpan={3} className="p-2 border-l border-t border-gray-300 font-mono text-sm bg-white text-center">
+                            {selectedNoticeDetail.equipo.numeroEquipo || "Sin información"}
+                          </td> 
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-                <DetailItem icon={HelpCircle} label="Texto Breve" value={selectedNoticeDetail.textoBreve} fullWidthValue placeholder="Sin texto breve."/>
 
+                {/* Circunstancias */}
+                <div className="p-4 border">
+                  <h3 className="font-bold text-lg mb-3 pb-2 border-b-2 border-yellow-500">
+                    Circunstancias
+                  </h3>
+                  <div className="border border-gray-300">
+                    <table className="w-full">
+                      <tbody>
+                        <tr className="border-b border-gray-300">
+                          <td className="w-32 p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
+                            Descripción
+                          </td>
+                          <td colSpan={3} className="p-2 font-mono text-sm bg-white text-center">
+                            {selectedNoticeDetail.tipoAviso.nombre || "Sin información"}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
+                            Texto Breve
+                          </td>
+                          <td colSpan={3} className="p-2 font-mono text-sm bg-white text-center">
+                            {selectedNoticeDetail.textoBreve || "Sin información"}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
 
-                <h3 className="font-semibold text-lg mb-1 mt-3 border-b pb-1 text-primary">Fechas y Horas (API)</h3>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                    <DetailItem icon={CalendarDays} label="Fecha Inicio" value={formatDate(selectedNoticeDetail.fechaInicio)} />
-                    <DetailItem icon={CalendarDays} label="Fecha Fin" value={formatDate(selectedNoticeDetail.fechaFin)} />
-                    <DetailItem icon={Clock} label="Hora Inicio (API)" value={formatDate(selectedNoticeDetail.horaInicio)} />
-                    <DetailItem icon={Clock} label="Hora Fin (API)" value={formatDate(selectedNoticeDetail.horaFin)} />
-                 </div>
+                {/* Responsabilidades */}
+                <div className="p-4 border">
+                  <h3 className="font-bold text-lg mb-3 pb-2 border-b-2 border-yellow-500">
+                    Responsabilidades
+                  </h3>
+                  <div className="border border-gray-300">
+                    <table className="w-full">
+                      <tbody>
+                        <tr className="border-b border-gray-300">
+                          <td className="w-32 p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
+                            Grupo Planificador
+                          </td>
+                          <td colSpan={3} className="p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
+                            {selectedNoticeDetail.equipo.puestoTrabajo || "Sin información"}
+                          </td>
+                        </tr>
+                        <tr className="border-b border-gray-300">
+                          <td className="p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
+                            Pto. Trabajo
+                          </td>
+                          <td colSpan={3} className="p-2 font-mono text-sm bg-white text-center">
+                            {selectedNoticeDetail.equipo.puestoTrabajo || "Sin información"}
+                          </td>
 
+                          <td colSpan={3} className="p-2 font-mono border-l border-t border-gray-300 text-sm bg-white text-center">
+                            {selectedNoticeDetail.equipo.puestoTrabajo || "Sin información"}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
+                            Autor del Aviso
+                          </td>
+                          <td colSpan={3} className="p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
+                            {selectedNoticeDetail.createdById || "Sin información"}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
 
-                <h3 className="font-semibold text-lg mb-1 mt-3 border-b pb-1 text-primary">Estado y Registro (Interno)</h3>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                    <DetailItem icon={Hash} label="ID Aviso (Interno)" value={selectedNoticeDetail.id} isCode />
-                    <DetailItem icon={CalendarDays} label="Creado el" value={formatDate(selectedNoticeDetail.createdAt, 'PPpp')} />
-                    <DetailItem icon={CalendarDays} label="Última Actualización" value={formatDate(selectedNoticeDetail.updatedAt, 'PPpp')} />
-                 </div>
+                {/* Fechas extremas */}
+                <div className="p-4 border">
+                  <h3 className="font-bold text-lg mb-3 pb-2 border-b-2 border-yellow-500">
+                    Fechas extremas
+                  </h3>
+                  <div className="border border-gray-300">
+                    <table className="w-full">
+                      <tbody>
+                        <tr className="border-b border-gray-300">
+                          <td className="w-32 p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
+                            Inicio Deseado
+                          </td>
+                          <td className="p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
+                            {formatDate(selectedNoticeDetail.fechaInicio, 'dd.MM.yyyy')}
+                          </td>
+                          <td className="p-2 font-mono text-sm bg-white text-center">
+                            {formatDate(selectedNoticeDetail.horaInicio, 'HH:mm:ss')}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
+                            Fin Deseado
+                          </td>
+                          <td className="p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
+                            {formatDate(selectedNoticeDetail.fechaFin, 'dd.MM.yyyy')}
+                          </td>
+                          <td className="p-2 font-mono text-sm bg-white text-center">
+                            {formatDate(selectedNoticeDetail.horaFin, 'HH:mm:ss')}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Posición */}
+                <div className="p-4 border">
+                  <h3 className="font-bold text-lg mb-3 pb-2 border-b-2 border-yellow-500">
+                    Posición
+                  </h3>
+                  
+                  <div className="border border-gray-300">
+                    <table className="w-full">
+                      <tbody>
+                        {/* Parte objeto */}
+                        <tr className="border-b border-gray-300">
+                          <td className="w-32 p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
+                            Parte objeto
+                          </td>
+                          <td className="w-24 p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
+                            {selectedNoticeDetail.equipo.objetoTecnico || "Sin información"}
+                          </td>
+                          <td className="w-24 p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
+                            {selectedNoticeDetail.parteObjeto.sensor?.nombre || "Sin información"}
+                          </td>
+                         
+                        </tr>
+
+                        {/* Sínt.avería */}
+                        <tr className="border-b border-gray-300">
+                          <td className="p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
+                            Sínt.avería
+                          </td>
+                          <td className="p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
+                            {selectedNoticeDetail.parteObjeto.sensor?.nombre || "Sin información"}
+                          </td>
+                          <td className="w-24 p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
+                            {selectedNoticeDetail.parteObjeto.sensor?.nombre || "Sin información"}
+                          </td>
+                        </tr>
+
+                        {/* Texto */}
+                        <tr className="border-b border-gray-300">
+                          <td className="p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
+                            texto
+                          </td>
+                          <td colSpan={3} className="w-24 p-2 font-mono text-sm bg-gray-50 text-center">
+                            {selectedNoticeDetail.parteObjeto.nombre || "Sin información"}
+                          </td>
+                        </tr>
+
+                        {/* Causa */}
+                        <tr className="border-b border-gray-300">
+                          <td className="p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
+                            Causa
+                          </td>
+                          <td className="p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
+                            {selectedNoticeDetail.parteObjeto.sensor?.nombre || "Sin información"}
+                          </td>
+                          <td className="p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
+                            {selectedNoticeDetail.parteObjeto.sensor?.nombre || "Sin información"}
+                          </td>
+                          
+                        </tr>
+
+                        {/* Texto causa */}
+                        <tr>
+                          <td className="p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
+                            Texto causa
+                          </td>
+                          <td colSpan={3} className="p-2 font-mono text-sm bg-gray-50 border-gray-400 text-center">
+                            {selectedNoticeDetail.parteObjeto.sensor?.nombre || "Sin información"}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  {/* Footer con información de entrada */}
+                  <div className="pt-3 flex justify-end">
+                    <div className="text-xs px-2 py-1 border border-gray-300 bg-gray-50">
+                      Entrada: <span className="font-mono">1</span> De <span className="font-mono">2</span>
+                    </div>
+                  </div>
+                </div>
+
+               
 
               </div>
             </ScrollArea>
-            <CardFooter className="pt-4">
-                <Button onClick={() => setIsDetailDialogOpen(false)} variant="outline" className="w-full">Cerrar</Button>
-            </CardFooter>
+            
+           
           </DialogContent>
         </Dialog>
       )}
     </div>
   );
 }
+

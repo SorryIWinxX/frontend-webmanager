@@ -21,11 +21,7 @@ export default function AuthenticatedLayout({
     if (!isLoading) {
       if (!currentUser) {
         router.replace('/login');
-      } else if (currentUser.forcePasswordChange) {
-        setIsPasswordChangeDialogOpen(true);
-      } else {
-        setIsPasswordChangeDialogOpen(false);
-      }
+      } 
     }
   }, [currentUser, isLoading, router]);
 
@@ -51,17 +47,7 @@ export default function AuthenticatedLayout({
         <ChangePasswordDialog 
           user={currentUser} 
           open={isPasswordChangeDialogOpen} 
-          onOpenChange={(open) => {
-            // If dialog is closed without password change (e.g. by an escape key if not prevented),
-            // and password change is still forced, log out or keep dialog open.
-            // For simplicity, we'll rely on onInteractOutside and onEscapeKeyDown in Dialog to prevent closing.
-            // If it somehow closes, and password change is still required, log out.
-            if (!open && currentUser?.forcePasswordChange) {
-                logout(); // Or handle this more gracefully, e.g. re-show dialog or a message
-            } else {
-                 setIsPasswordChangeDialogOpen(open);
-            }
-          }}
+          onOpenChange={setIsPasswordChangeDialogOpen}
         />
       )}
       <main className={`flex-grow container mx-auto px-0 sm:px-4 py-6 ${isPasswordChangeDialogOpen ? 'opacity-20 pointer-events-none' : ''}`}>
