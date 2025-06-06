@@ -41,6 +41,27 @@ export interface Material {
   description: string;
 }
 
+export interface LongText {
+  id: number;
+  linea: string;
+  textLine: string;
+}
+
+export interface ItemInspeccion {
+  id: number;
+  codigoGrupo: string;
+  catalogo: string;
+  codigo: string;
+  descripcion: string;
+}
+
+export interface Item {
+  id: number;
+  SUBCO?: string | null;
+  longTexts?: LongText[];
+  inspecciones?: ItemInspeccion[];
+}
+
 // Simplified interface for Maintenance Notices for external API integration
 export interface MaintenanceNoticeAPI {
   // Fields from the external API request
@@ -66,6 +87,7 @@ export interface MaintenanceNoticeAPI {
   // Additional fields from backend
   inspeccion?: Inspeccion;
   material?: Material;
+  items?: Item[];
 }
 
 export interface User {

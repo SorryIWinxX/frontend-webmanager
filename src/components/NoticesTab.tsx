@@ -12,7 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import type { MaintenanceNoticeAPI, NoticeStatus } from '@/types';
 import { getMaintenanceNotices, sendMaintenanceNoticesToSAP } from '@/app/actions';
-import { Loader2, Send, ListChecks, AlertTriangle, CheckCircle, Eye, ImageOff, ChevronLeft, ChevronRight, Info, UserCircle, CalendarDays, Clock, Tag, Hash, Edit, Settings, HelpCircle, Briefcase, MapPin, Wrench, AlertCircle, User, FileText, Calendar, Activity } from 'lucide-react';
+import { Loader2, Send, ListChecks, AlertTriangle, CheckCircle, Eye, ImageOff, ChevronLeft, ChevronRight, Info, UserCircle, CalendarDays, Clock, Tag, Hash, Edit, Settings, HelpCircle, Briefcase, MapPin, Wrench, AlertCircle, User, FileText, Calendar, Activity, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Textarea } from './ui/textarea';
@@ -61,12 +61,14 @@ export function NoticesTab() {
   const [isSending, startSending] = useTransition();
   const [selectedNoticeDetail, setSelectedNoticeDetail] = useState<MaintenanceNoticeAPI | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [currentPositionIndex, setCurrentPositionIndex] = useState(0);
+  const [lastNoticeCount, setLastNoticeCount] = useState(0);
   const { toast } = useToast();
 
   const [pendingCurrentPage, setPendingCurrentPage] = useState(1);
   const [processedCurrentPage, setProcessedCurrentPage] = useState(1);
 
-  const fetchNoticesData = () => {
+  const fetchNoticesData = (showToastOnNewNotices = false) => {
     startLoadingNotices(async () => {
       try {
         const result = await getMaintenanceNotices();
@@ -107,6 +109,7 @@ export function NoticesTab() {
           imageUrl: "https://motos.espirituracer.com/archivos/2018/10/Yamaha-YZF-R1-6.png", // Imagen de ejemplo
           data_ai_hint: notice.parteObjeto?.sensor?.nombre || 'mantenimiento',
           reporterName: notice.reporterUser?.cedula || '',
+          createdById: notice.masterUser?.username || notice.reporterUser?.cedula || '',
           noticeType: notice.tipoAviso ? {
             id: notice.tipoAviso.id,
             nombre: notice.tipoAviso.nombre,
@@ -123,10 +126,24 @@ export function NoticesTab() {
             id: notice.material.id,
             conjunto: notice.material.conjunto,
             description: notice.material.description
-          } : undefined
+          } : undefined,
+          items: notice.items || []
         }));
+
+        // Verificar si hay nuevos avisos pendientes
+        const newPendingCount = mappedNotices.filter(n => n.status === "Pendiente").length;
+        
+        if (showToastOnNewNotices && lastNoticeCount > 0 && newPendingCount > lastNoticeCount) {
+          const newNoticesCount = newPendingCount - lastNoticeCount;
+          toast({
+            title: "Nuevos avisos de mantenimiento",
+            description: `Se han recibido ${newNoticesCount} nuevo${newNoticesCount > 1 ? 's' : ''} aviso${newNoticesCount > 1 ? 's' : ''} pendiente${newNoticesCount > 1 ? 's' : ''}.`,
+            variant: "default",
+          });
+        }
         
         setNotices(mappedNotices);
+        setLastNoticeCount(newPendingCount);
       } catch (e) {
         toast({
           title: "Error al cargar avisos",
@@ -138,7 +155,16 @@ export function NoticesTab() {
   };
 
   useEffect(() => {
+    // Cargar datos inicialmente
     fetchNoticesData();
+
+    // Configurar polling cada 30 segundos
+    const interval = setInterval(() => {
+      fetchNoticesData(true); // Mostrar toast si hay nuevos avisos
+    }, 30000);
+
+    // Limpiar el interval al desmontar el componente
+    return () => clearInterval(interval);
   }, []);
 
   const handleSelectNotice = (noticeId: string) => {
@@ -171,7 +197,19 @@ export function NoticesTab() {
 
     startSending(async () => {
       try {
-        const avisoIds = noticesToSend.map(id => parseInt(id));
+        // Validate that noticesToSend is an array before mapping
+        if (!Array.isArray(noticesToSend)) {
+          throw new Error("Error interno: noticesToSend no es un array válido");
+        }
+
+        const avisoIds = noticesToSend.map(id => {
+          const numericId = parseInt(id);
+          if (isNaN(numericId)) {
+            throw new Error(`ID de aviso inválido: ${id}`);
+          }
+          return numericId;
+        });
+        
         const result = await sendMaintenanceNoticesToSAP(avisoIds);
         
         if (!result.success) {
@@ -187,6 +225,7 @@ export function NoticesTab() {
         fetchNoticesData();
         setSelectedNotices([]);
       } catch (e) {
+        console.error('Error in handleSendToSAP:', e);
         toast({
           title: "Error al enviar avisos",
           description: e instanceof Error ? e.message : "Ocurrió un error desconocido.",
@@ -209,6 +248,7 @@ export function NoticesTab() {
 
   const openDetailDialog = (notice: MaintenanceNoticeAPI) => {
     setSelectedNoticeDetail(notice);
+    setCurrentPositionIndex(0);
     setIsDetailDialogOpen(true);
   };
 
@@ -218,6 +258,20 @@ export function NoticesTab() {
       return format(new Date(dateString), dateFormat, { locale: es });
     } catch {
       return 'Fecha inválida';
+    }
+  };
+
+  const formatTime = (timeString?: string) => {
+    if (!timeString) return 'hh:mm:ss';
+    // If it's already in HH:mm:ss format, return as is
+    if (/^\d{2}:\d{2}:\d{2}$/.test(timeString)) {
+      return timeString;
+    }
+    // If it's a full datetime, extract the time part
+    try {
+      return format(new Date(timeString), 'HH:mm:ss', { locale: es });
+    } catch {
+      return 'Hora inválida';
     }
   };
 
@@ -397,6 +451,20 @@ export function NoticesTab() {
               </CardDescription>
             </div>
             <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+              <Button
+                onClick={() => fetchNoticesData()}
+                disabled={isLoadingNotices}
+                variant="default"
+                className="hover:bg-blue-500"
+                aria-label="Actualizar avisos"
+              >
+                {isLoadingNotices ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                )}
+                Actualizar
+              </Button>
               {pendingNotices.length > 0 && (
                 <div className="flex items-center space-x-2 bg-muted p-2 rounded-md border">
                     <Checkbox
@@ -567,7 +635,7 @@ export function NoticesTab() {
                             Grupo Planificador
                           </td>
                           <td colSpan={3} className="p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
-                            {selectedNoticeDetail.equipo.puestoTrabajo || "Sin información"}
+                            {selectedNoticeDetail.equipo.perfilCatalogo || "Sin información"}
                           </td>
                         </tr>
                         <tr className="border-b border-gray-300">
@@ -577,23 +645,50 @@ export function NoticesTab() {
                           <td colSpan={3} className="p-2 font-mono text-sm bg-white text-center">
                             {selectedNoticeDetail.equipo.puestoTrabajo || "Sin información"}
                           </td>
-
-                          <td colSpan={3} className="p-2 font-mono border-l border-t border-gray-300 text-sm bg-white text-center">
-                            {selectedNoticeDetail.equipo.puestoTrabajo || "Sin información"}
-                          </td>
                         </tr>
                         <tr>
                           <td className="p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
                             Autor del Aviso
                           </td>
                           <td colSpan={3} className="p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
-                            {selectedNoticeDetail.createdById || "Sin información"}
+                            {selectedNoticeDetail.createdById || selectedNoticeDetail.reporterName || "Sin información"}
                           </td>
                         </tr>
                       </tbody>
                     </table>
                   </div>
                 </div>
+
+                {/* Material */}
+                {selectedNoticeDetail.material && (
+                  <div className="p-4 border">
+                    <h3 className="font-bold text-lg mb-3 pb-2 border-b-2 border-yellow-500">
+                      Material
+                    </h3>
+                    <div className="border border-gray-300">
+                      <table className="w-full">
+                        <tbody>
+                          <tr className="border-b border-gray-300">
+                            <td className="w-32 p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
+                              Conjunto
+                            </td>
+                            <td className="p-2 font-mono text-sm bg-white text-center">
+                              {selectedNoticeDetail.material.conjunto || "Sin información"}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td className="p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
+                              Descripción
+                            </td>
+                            <td className="p-2 text-sm bg-white">
+                              {selectedNoticeDetail.material.description || "Sin información"}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
 
                 {/* Fechas extremas */}
                 <div className="p-4 border">
@@ -611,7 +706,7 @@ export function NoticesTab() {
                             {formatDate(selectedNoticeDetail.fechaInicio, 'dd.MM.yyyy')}
                           </td>
                           <td className="p-2 font-mono text-sm bg-white text-center">
-                            {formatDate(selectedNoticeDetail.horaInicio, 'HH:mm:ss')}
+                            {formatTime(selectedNoticeDetail.horaInicio)}
                           </td>
                         </tr>
                         <tr>
@@ -622,7 +717,7 @@ export function NoticesTab() {
                             {formatDate(selectedNoticeDetail.fechaFin, 'dd.MM.yyyy')}
                           </td>
                           <td className="p-2 font-mono text-sm bg-white text-center">
-                            {formatDate(selectedNoticeDetail.horaFin, 'HH:mm:ss')}
+                            {formatTime(selectedNoticeDetail.horaFin)}
                           </td>
                         </tr>
                       </tbody>
@@ -632,83 +727,186 @@ export function NoticesTab() {
 
                 {/* Posición */}
                 <div className="p-4 border">
-                  <h3 className="font-bold text-lg mb-3 pb-2 border-b-2 border-yellow-500">
+                  <h3 className="font-bold text-lg mb-3 pb-2 border-b-2 border-yellow-500 flex items-center justify-between">
                     Posición
+                    {selectedNoticeDetail.items && selectedNoticeDetail.items.length > 0 && (
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPositionIndex(Math.max(0, currentPositionIndex - 1))}
+                          disabled={currentPositionIndex === 0}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="text-sm bg-muted px-2 py-1 rounded">
+                          {currentPositionIndex + 1} de {selectedNoticeDetail.items.length}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPositionIndex(Math.min((selectedNoticeDetail.items?.length || 1) - 1, currentPositionIndex + 1))}
+                          disabled={currentPositionIndex === (selectedNoticeDetail.items?.length || 1) - 1}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
                   </h3>
                   
-                  <div className="border border-gray-300">
-                    <table className="w-full">
-                      <tbody>
-                        {/* Parte objeto */}
-                        <tr className="border-b border-gray-300">
-                          <td className="w-32 p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
-                            Parte objeto
-                          </td>
-                          <td className="w-24 p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
-                            {selectedNoticeDetail.equipo.objetoTecnico || "Sin información"}
-                          </td>
-                          <td className="w-24 p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
-                            {selectedNoticeDetail.parteObjeto.sensor?.nombre || "Sin información"}
-                          </td>
-                         
-                        </tr>
+                  {selectedNoticeDetail.items && selectedNoticeDetail.items.length > 0 ? (
+                    (() => {
+                      const currentItem = selectedNoticeDetail.items[currentPositionIndex];
+                      return (
+                        <div className="space-y-4">
+                          {/* Texto Largo de la Posición */}
+                          {currentItem.longTexts && currentItem.longTexts.length > 0 && (
+                            <div className="border border-gray-300 rounded">
+                              <div className="bg-gray-100 p-2 border-b border-gray-300">
+                                <span className="font-medium text-sm">Texto Largo</span>
+                              </div>
+                              {currentItem.longTexts.map((longText, index) => (
+                                <div key={longText.id} className="p-3 border-b border-gray-200 last:border-b-0">
+                                  <div className="flex items-center space-x-2 mb-2">
+                                   
+                                  </div>
+                                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                    {longText.textLine}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
 
-                        {/* Sínt.avería */}
-                        <tr className="border-b border-gray-300">
-                          <td className="p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
-                            Sínt.avería
-                          </td>
-                          <td className="p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
-                            {selectedNoticeDetail.parteObjeto.sensor?.nombre || "Sin información"}
-                          </td>
-                          <td className="w-24 p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
-                            {selectedNoticeDetail.parteObjeto.sensor?.nombre || "Sin información"}
-                          </td>
-                        </tr>
+                          {/* Inspecciones */}
+                          {currentItem.inspecciones && currentItem.inspecciones.length > 0 && (
+                            <div className="border border-gray-300 rounded">
+                              <div className="bg-gray-100 p-2 border-b border-gray-300">
+                                <span className="font-medium text-sm">Inspecciones</span>
+                              </div>
+                              <div className="overflow-x-auto">
+                                <table className="w-full">
+                                  <thead>
+                                    <tr className="border-b border-gray-300 bg-gray-50">
+                                      <th className="p-2 text-left text-xs font-medium text-gray-600 border-r border-gray-300">
+                                        Código Grupo
+                                      </th>
+                                      <th className="p-2 text-left text-xs font-medium text-gray-600 border-r border-gray-300">
+                                        Catálogo
+                                      </th>
+                                      <th className="p-2 text-left text-xs font-medium text-gray-600 border-r border-gray-300">
+                                        Código
+                                      </th>
+                                      <th className="p-2 text-left text-xs font-medium text-gray-600">
+                                        Descripción
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {currentItem.inspecciones.map((inspeccion, index) => (
+                                      <tr key={inspeccion.id} className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50">
+                                        <td className="p-2 font-mono text-sm border-r border-gray-200">
+                                          {inspeccion.codigoGrupo}
+                                        </td>
+                                        <td className="p-2 font-mono text-sm border-r border-gray-200 text-center">
+                                          {inspeccion.catalogo}
+                                        </td>
+                                        <td className="p-2 font-mono text-sm border-r border-gray-200 text-center">
+                                          {inspeccion.codigo}
+                                        </td>
+                                        <td className="p-2 text-sm">
+                                          {inspeccion.descripcion}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
 
-                        {/* Texto */}
-                        <tr className="border-b border-gray-300">
-                          <td className="p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
-                            texto
-                          </td>
-                          <td colSpan={3} className="w-24 p-2 font-mono text-sm bg-gray-50 text-center">
-                            {selectedNoticeDetail.parteObjeto.nombre || "Sin información"}
-                          </td>
-                        </tr>
+                          {/* Información adicional del item */}
+                          {currentItem.SUBCO && (
+                            <div className="border border-gray-300 rounded">
+                              <div className="bg-gray-100 p-2 border-b border-gray-300">
+                                <span className="font-medium text-sm">SUBCO</span>
+                              </div>
+                              <div className="p-3">
+                                <span className="font-mono text-sm">{currentItem.SUBCO}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    <div className="border border-gray-300">
+                      <table className="w-full">
+                        <tbody>
+                          {/* Parte objeto */}
+                          <tr className="border-b border-gray-300">
+                            <td className="w-32 p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
+                              Parte objeto
+                            </td>
+                            <td className="w-24 p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
+                              {selectedNoticeDetail.equipo.objetoTecnico || "Sin información"}
+                            </td>
+                            <td className="w-24 p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
+                              {selectedNoticeDetail.parteObjeto.sensor?.nombre || "Sin información"}
+                            </td>
+                           
+                          </tr>
 
-                        {/* Causa */}
-                        <tr className="border-b border-gray-300">
-                          <td className="p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
-                            Causa
-                          </td>
-                          <td className="p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
-                            {selectedNoticeDetail.parteObjeto.sensor?.nombre || "Sin información"}
-                          </td>
-                          <td className="p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
-                            {selectedNoticeDetail.parteObjeto.sensor?.nombre || "Sin información"}
-                          </td>
-                          
-                        </tr>
+                          {/* Sínt.avería */}
+                          <tr className="border-b border-gray-300">
+                            <td className="p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
+                              Sínt.avería
+                            </td>
+                            <td className="p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
+                              {selectedNoticeDetail.parteObjeto.sensor?.nombre || "Sin información"}
+                            </td>
+                            <td className="w-24 p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
+                              {selectedNoticeDetail.parteObjeto.sensor?.nombre || "Sin información"}
+                            </td>
+                          </tr>
 
-                        {/* Texto causa */}
-                        <tr>
-                          <td className="p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
-                            Texto causa
-                          </td>
-                          <td colSpan={3} className="p-2 font-mono text-sm bg-gray-50 border-gray-400 text-center">
-                            {selectedNoticeDetail.parteObjeto.sensor?.nombre || "Sin información"}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                  
-                  {/* Footer con información de entrada */}
-                  <div className="pt-3 flex justify-end">
-                    <div className="text-xs px-2 py-1 border border-gray-300 bg-gray-50">
-                      Entrada: <span className="font-mono">1</span> De <span className="font-mono">2</span>
+                          {/* Texto */}
+                          <tr className="border-b border-gray-300">
+                            <td className="p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
+                              texto
+                            </td>
+                            <td colSpan={3} className="w-24 p-2 font-mono text-sm bg-gray-50 text-center">
+                              {selectedNoticeDetail.parteObjeto.nombre || "Sin información"}
+                            </td>
+                          </tr>
+
+                          {/* Causa */}
+                          <tr className="border-b border-gray-300">
+                            <td className="p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
+                              Causa
+                            </td>
+                            <td className="p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
+                              {selectedNoticeDetail.parteObjeto.sensor?.nombre || "Sin información"}
+                            </td>
+                            <td className="p-2 border-r border-gray-300 font-mono text-sm bg-white text-center">
+                              {selectedNoticeDetail.parteObjeto.sensor?.nombre || "Sin información"}
+                            </td>
+                            
+                          </tr>
+
+                          {/* Texto causa */}
+                          <tr>
+                            <td className="p-2 bg-gray-100 border-r border-gray-300 font-medium text-sm">
+                              Texto causa
+                            </td>
+                            <td colSpan={3} className="p-2 font-mono text-sm bg-gray-50 border-gray-400 text-center">
+                              {selectedNoticeDetail.parteObjeto.sensor?.nombre || "Sin información"}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                

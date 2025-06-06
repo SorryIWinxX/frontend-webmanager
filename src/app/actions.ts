@@ -285,18 +285,30 @@ export async function sendMaintenanceNoticesToSAP(avisoIds: number[]): Promise<{
     return { success: false, message: "Error de configuración del servidor.", error: "Backend URL not configured" };
   }
 
-  if (!avisoIds || avisoIds.length === 0) {
+  // Validate avisoIds parameter
+  if (!avisoIds || !Array.isArray(avisoIds)) {
+    return { success: false, message: "Error interno: avisoIds debe ser un array válido.", error: "Invalid avisoIds parameter" };
+  }
+
+  if (avisoIds.length === 0) {
     return { success: false, message: "No se proporcionaron avisos para enviar.", error: "Empty avisoIds array" };
   }
 
+  // Validate that all items in the array are numbers
+  const invalidIds = avisoIds.filter(id => typeof id !== 'number' || isNaN(id));
+  if (invalidIds.length > 0) {
+    return { success: false, message: `IDs de aviso inválidos: ${invalidIds.join(', ')}`, error: "Invalid ID values" };
+  }
+
   try {
-    const response = await fetch(`${backendUrl}/sap/enviar-aviso-mantenimiento`, {
+    console.log('Sending avisoIds to SAP:', avisoIds);
+    const response = await fetch(`${backendUrl}/sap/enviar-avisos`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        ids: avisoIds
+        avisosIds: avisoIds
       })
     });
 
